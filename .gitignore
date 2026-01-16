@@ -1,0 +1,4 @@
+.DS_Store
+*.zip
+app/build
+app/files/map

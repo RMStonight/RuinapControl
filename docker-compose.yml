@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  qt-dev:
+    image: my-qt-dev
+    container_name: qt-container
+    # 对应 -it (允许交互式终端)
+    stdin_open: true
+    tty: true
+    
+    # 对应 -p (端口映射)
+    # ports:
+    
+    # 对应 -e
+    environment:
+      - DISPLAY=host.docker.internal:0
+    
+    # 对应 -v
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix
+      - ./app:/app  # 将当前目录映射到容器内的 /app
+      
+    # 对应 --rm 的逻辑: 
+    # Compose 默认不自动删除容器，但通常设置为 no restart 以防止退出后无限重启
+    restart: "no"

@@ -1,0 +1,206 @@
+/* 通用输入框样式 (QLineEdit 和 QSpinBox 统一风格) */
+QLineEdit, QSpinBox {
+    border: 1px solid #DCDFE6; /* 灰色边框 */
+    border-radius: 4px;        /* 圆角 */
+    padding: 4px 8px;          /* 内边距，让文字不贴边 */
+    background-color: #FFFFFF; /* 纯白背景 */
+    selection-background-color: #0078D7; /* 选中文字的蓝色背景 */
+    font-size: 14px;
+    min-height: 25px;          /* 固定高度，保证整齐 */
+}
+        
+/* 聚焦时的效果 (高亮边框) */
+QLineEdit:focus, QSpinBox:focus {
+    border: 1px solid #0078D7;
+}
+
+/* 修复 QSpinBox 的上下按钮 (关键部分) */
+QSpinBox::up-button, QSpinBox::down-button {
+    subcontrol-origin: border;
+    width: 25px; /* 按钮宽度 */
+    border-left: 1px solid #DCDFE6; /* 左侧分割线 */
+    background-color: #F5F7FA;      /* 按钮背景色 (浅灰)，修复黑块！ */
+}
+        
+QSpinBox::up-button {
+    subcontrol-position: top right;
+    border-top-right-radius: 4px;
+    border-bottom: 1px solid #DCDFE6; /* 上下按钮之间的分割线 */
+}
+        
+QSpinBox::down-button {
+    subcontrol-position: bottom right;
+    border-bottom-right-radius: 4px;
+}
+        
+/* 鼠标悬停效果 */
+QSpinBox::up-button:hover, QSpinBox::down-button:hover {
+    background-color: #E6F1FC; /* 浅蓝色背景 */
+}
+        
+QSpinBox::up-button:pressed, QSpinBox::down-button:pressed {
+    background-color: #D0E3F5; /* 按下颜色 */
+}
+
+/* 使用 SVG 图标 (工业级清晰度) */
+QSpinBox::up-arrow, QSpinBox::down-arrow {
+    width: 12px;
+    height: 12px;
+    border: none; /* 去掉边框，只显示图标 */
+}
+
+QSpinBox::up-arrow {
+    image: url(:/icons/arrow_up.svg);
+}
+
+QSpinBox::down-arrow {
+    image: url(:/icons/arrow_down.svg);
+}
+
+/* 可选：鼠标按下时，让图标微微偏移，增加物理按压感 */
+QSpinBox::up-button:pressed QSpinBox::up-arrow,
+QSpinBox::down-button:pressed QSpinBox::down-arrow {
+    margin-top: 1px;
+    margin-left: 1px;
+}
+
+
+/* CheckBox 美化 */
+QCheckBox {
+    spacing: 10px;       /* 文字和方块之间的距离 */
+    font-size: 14px; 
+    color: #333333;
+    outline: none;       /* 去掉点击时的虚线框 */
+}
+
+/* 复选框的小方块 (Indicator) */
+QCheckBox::indicator {
+    width: 18px;
+    height: 18px;
+    
+    /* 【关键】必须定义边框和背景，否则在白底上看不见 */
+    border: 1px solid #DCDFE6; /* 灰色边框 */
+    border-radius: 4px;        /* 稍微一点圆角 */
+    background-color: #FFFFFF; /* 白色背景 */
+}
+
+/* 鼠标悬停时：边框变蓝，提示可点击 */
+QCheckBox::indicator:unchecked:hover {
+    border: 1px solid #0078D7;
+}
+
+/* 选中状态：蓝色背景 + 白色对勾 */
+QCheckBox::indicator:checked {
+    background-color: #0078D7; /* 变成实心蓝 */
+    border: 1px solid #0078D7; /* 边框也变蓝 */
+    
+    /* 加载 SVG 对勾图标 */
+    image: url(:/icons/checkbox_checked.svg);
+}
+
+/* 选中状态下的悬停 */
+QCheckBox::indicator:checked:hover {
+    background-color: #006CC1; /*稍微深一点的蓝 */
+    border: 1px solid #006CC1;
+}
+
+/* 按下状态 (点击瞬间) */
+QCheckBox::indicator:pressed {
+    background-color: #005A9E;
+    border: 1px solid #005A9E;
+}
+
+/* ===========================
+   【新增】特定控件样式
+   =========================== */
+
+/* 章节标题 (对应 C++ 里的 setProperty("role", "sectionTitle")) */
+QLabel[role="sectionTitle"] {
+    font-size: 16px;
+    font-weight: bold;
+    color: #333333;
+    padding: 5px 0 5px 10px;
+    border-left: 5px solid #0078D7;   /* 蓝色竖条 */
+    border-bottom: 1px solid #E0E0E0; /* 底部间隔线 */
+    margin-top: 20px;
+    margin-bottom: 10px;
+}
+
+/* 底部栏容器 (对应 setObjectName("bottomBar")) */
+QWidget#bottomBar {
+    background-color: #F0F2F5;
+    border-top: 1px solid #DCDFE6;
+}
+
+QLabel#tipLabel, QLabel#versionLabel {
+    color: #909399;           /* 使用稍微浅一点的灰色，显得柔和 */
+    font-size: 12px;
+    background-color: transparent; /* 显式设置为透明，透出底部的灰色 */
+    padding-left: 5px;        /* 稍微加点左边距 */
+}
+
+/* 如果你希望版本号稍微突出一点点（可选），可以单独给它加粗，不加也行 */
+QLabel#versionLabel {
+    font-weight: bold;
+}
+
+/* 保存按钮 (对应 setObjectName("btnSave")) */
+QPushButton#btnSave {
+    background-color: #0078D7;
+    color: white;
+    border-radius: 4px;
+    font-size: 14px;
+    font-weight: bold;
+}
+
+QPushButton#btnSave:hover {
+    background-color: #006CC1;
+}
+
+QPushButton#btnSave:pressed {
+    background-color: #005A9E;
+}
+
+/* ===========================
+   退出按钮样式 (红色警示风格)
+   =========================== */
+QPushButton#btnExit {
+    background-color: #F56C6C; /* 柔和的红色 */
+    color: #FFFFFF;
+    border-radius: 4px;
+    font-size: 14px;
+    font-weight: bold;
+    border: 1px solid #F56C6C;
+}
+
+QPushButton#btnExit:hover {
+    background-color: #F78989; /* 悬停变浅 */
+    border: 1px solid #F78989;
+}
+
+QPushButton#btnExit:pressed {
+    background-color: #DD6161; /* 按下变深 */
+    border: 1px solid #DD6161;
+}
+
+/* 稍微优化一下保存按钮，确保高度一致 */
+QPushButton#btnSave {
+    /* 保持你原有的蓝色样式 */
+    background-color: #0078D7;
+    color: white;
+    border-radius: 4px;
+    font-size: 14px;
+    font-weight: bold;
+}
+
+/* 滚动区域背景透明 */
+/* 如果你的 scrollContent 也有名字，可以用名字；如果没有，可以直接针对 QScrollArea 内部的 QWidget */
+QScrollArea > QWidget > QWidget {
+    background-color: transparent;
+}
+
+/* 强制所有表单里的 Label 宽度一致，确保右侧输入框对齐 */
+QScrollArea QFormLayout QLabel {
+    min-width: 120px;  /* 根据你最长的标题调整这个数值，比如 'RosBridge IP:' 大概需要 100-120px */
+    max-width: 120px;
+}

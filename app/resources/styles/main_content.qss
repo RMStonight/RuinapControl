@@ -1,0 +1,70 @@
+/* resources/styles/main_content.qss */
+
+/* 1. 整体容器 */
+QTabWidget {
+    border: none;
+    background-color: #F5F7FA;
+}
+
+/* 2. 内容区域 (Pane) */
+QTabWidget::pane {
+    border: none;
+    /* 顶部保留一条明显的蓝线，作为视觉引导 */
+    border-top: 2px solid #0078D7; 
+    background-color: #FFFFFF;
+    top: -1px; /* 稍微上移，实现无缝连接 */
+}
+
+/* 3. Tab 栏背景 */
+QTabBar {
+    background-color: #E8ECF1;
+    qproperty-drawBase: 0;
+}
+
+/* 4. 单个 Tab 按钮 (通用样式) */
+QTabBar::tab {
+    background-color: transparent;
+    color: #606266;
+    
+    /* 【触控优化】增大点击区域 */
+    padding: 15px 10px;       
+    min-width: 90px;          
+    min-height: 20px;         
+    
+    font-family: "Microsoft YaHei";
+    font-size: 14px;
+    font-weight: bold;
+    
+    /* 【视觉分割线】右侧和底部加淡灰色线条 */
+    border-right: 1px solid #DCDFE6; 
+    border-bottom: 1px solid #DCDFE6; 
+}
+
+/* 5. 最后一个 Tab 去掉右侧分割线 */
+QTabBar::tab:last {
+    border-right: none;
+}
+
+/* 6. 鼠标悬停 */
+QTabBar::tab:hover {
+    background-color: #D9E1E8;
+    color: #000000;
+}
+
+/* 7. 选中状态 (高亮) */
+QTabBar::tab:selected {
+    background-color: #FFFFFF; 
+    color: #0078D7;            
+    
+    /* 顶部加蓝条，底部变成白色(遮住pane的线) */
+    border-top: 2px solid #0078D7;
+    border-bottom: 1px solid #FFFFFF; 
+    
+    border-right: 1px solid #DCDFE6;
+}
+
+/* 8. 未选中状态修正 */
+QTabBar::tab:!selected {
+    margin-top: 2px; 
+    border-top: 0px solid transparent; 
+}

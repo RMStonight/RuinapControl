@@ -1,0 +1,32 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug Qt App",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/RuinapControl",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [
+                // 【核心修改点】：不要写死 IP，使用 ${env:DISPLAY} 读取当前环境值
+                { "name": "DISPLAY", "value": "${env:DISPLAY}" },
+                // 如果你之前禁用了 GL，这里也要加上
+                { "name": "LIBGL_ALWAYS_SOFTWARE", "value": "1" },
+                // 可选：防止 Qt 警告
+                { "name": "QT_LOGGING_RULES", "value": "*.debug=true" } 
+            ],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ],
+            "preLaunchTask": "CMake Build"
+        }
+    ]
+}

@@ -1,0 +1,10 @@
+<!DOCTYPE RCC>
+<RCC>
+  <qresource prefix="/">
+    <file>styles/main_content.qss</file>
+    <file>icons/arrow_down.svg</file>
+    <file>icons/arrow_up.svg</file>
+    <file>styles/system_settings.qss</file>
+    <file>icons/checkbox_checked.svg</file>
+  </qresource>
+</RCC>
