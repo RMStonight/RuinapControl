@@ -6,5 +6,7 @@
     <file>icons/arrow_up.svg</file>
     <file>styles/system_settings.qss</file>
     <file>icons/checkbox_checked.svg</file>
+    <file>styles/top_header.qss</file>
+    <file>icons/light.svg</file>
   </qresource>
 </RCC>

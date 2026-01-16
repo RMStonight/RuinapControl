@@ -1,0 +1,44 @@
+/* top_header.qss */
+
+/* ==========================================
+   整体容器样式
+   ========================================== */
+#headerContainer {
+    border-bottom: 1px solid #A0A0A0;
+    background-color: #FFFFFF; /* 显式指定背景色，防止透明 */
+}
+
+/* ==========================================
+   电池条基础样式
+   ========================================== */
+QProgressBar {
+    border: 1px solid #999999;
+    border-radius: 8px;
+    background-color: #FFFFFF;
+    text-align: center;
+    color: #333333; /* 文字颜色 */
+}
+
+/* 电池条进度块 - 圆角通用设置 */
+QProgressBar::chunk {
+    border-radius: 7px;
+}
+
+/* ==========================================
+   电池条 - 状态颜色定义 (利用动态属性 batteryLevel)
+   ========================================== */
+
+/* 状态：正常 (>= 60%) - 绿色 */
+QProgressBar[batteryState="normal"]::chunk {
+    background-color: #00CD00;
+}
+
+/* 状态：警告 (20% <= x < 60%) - 黄色 */
+QProgressBar[batteryState="warning"]::chunk {
+    background-color: #FFC107; /* 使用醒目的琥珀黄 */
+}
+
+/* 状态：紧急 (< 20%) - 红色 */
+QProgressBar[batteryState="critical"]::chunk {
+    background-color: #FF4444;
+}

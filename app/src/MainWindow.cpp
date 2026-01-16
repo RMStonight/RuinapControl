@@ -49,26 +49,30 @@ void MainWindow::setupConnections()
     connect(m_mainContent, &MainContentWidget::testBtnClicked, [this]()
             {
         m_topHeader->setBatteryLevel(rand() % 100); // 随机设置电量
-        m_topHeader->setTaskStatus("充电中..."); });
+        m_topHeader->setAgvStatus("充电中"); 
+        m_topHeader->setLightColor("#ff0000"); });
 
     // 【新增】监听配置修改信号，实时切换全屏/窗口模式
     connect(ConfigManager::instance(), &ConfigManager::configChanged,
             this, &MainWindow::applyWindowState);
 }
 
-// 
+//
 void MainWindow::applyWindowState()
 {
     bool isFull = ConfigManager::instance()->fullScreen();
 
-    if (isFull) {
+    if (isFull)
+    {
         // 真正的全屏：无边框、无标题栏、覆盖任务栏
         this->showFullScreen();
-    } else {
+    }
+    else
+    {
         // 恢复正常窗口模式
         this->showNormal();
-        
+
         // 如果你希望非全屏时也是最大化的（但有标题栏），可以用：
-        // this->showMaximized(); 
+        // this->showMaximized();
     }
 }

@@ -53,7 +53,7 @@ void MainContentWidget::initLayout()
     tabBar->setExpanding(true);
 
     // ==========================================
-    // Tab 1: 系统概览 (保留原来的测试按钮)
+    // Tab 1: 车辆信息 (保留原来的测试按钮)
     // ==========================================
     QWidget *tabOverview = new QWidget();
     QVBoxLayout *overviewLayout = new QVBoxLayout(tabOverview);
@@ -62,11 +62,11 @@ void MainContentWidget::initLayout()
     m_testBtn->setFixedSize(180, 50);
 
     overviewLayout->addStretch();
-    overviewLayout->addWidget(new QLabel("这里是系统概览页面", tabOverview), 0, Qt::AlignCenter);
+    overviewLayout->addWidget(new QLabel("这里是车辆信息页面", tabOverview), 0, Qt::AlignCenter);
     overviewLayout->addWidget(m_testBtn, 0, Qt::AlignCenter);
     overviewLayout->addStretch();
 
-    m_tabWidget->addTab(tabOverview, "系统概览");
+    m_tabWidget->addTab(tabOverview, "车辆信息");
 
     // ==========================================
     // Tab 2: 实时监控 (不再是占位符)
@@ -79,7 +79,7 @@ void MainContentWidget::initLayout()
     // ==========================================
     // 定义剩下的8个标签名
     QStringList tabNames = {
-        "任务管理", "地图编辑", "车辆状态",
+        "任务管理", "手动控制", "可选信息",
         "报警记录", "日志分析", "用户权限"};
 
     for (const QString &name : tabNames)
