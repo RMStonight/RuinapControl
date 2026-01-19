@@ -47,12 +47,12 @@ public slots:
         if (val.isMap())
         {
             QCborMap map = val.toMap();
-            QString op = map[QString("op")].toString();
+            QString op = map[QStringLiteral("op")].toString();
             if (op != "publish")
                 return;
 
-            QString topic = map[QString("topic")].toString();
-            QCborValue msg = map[QString("msg")];
+            QString topic = map[QStringLiteral("topic")].toString();
+            QCborValue msg = map[QStringLiteral("msg")];
 
             if (topic == "/map")
             {
@@ -90,25 +90,25 @@ private:
     void parseMapCbor(const QCborValue &msgVal)
     {
         QCborMap msg = msgVal.toMap();
-        QCborMap info = msg[QString("info")].toMap();
+        QCborMap info = msg[QStringLiteral("info")].toMap();
 
-        int width = info[QString("width")].toInteger();
-        int height = info[QString("height")].toInteger();
-        double resolution = info[QString("resolution")].toDouble();
+        int width = info[QStringLiteral("width")].toInteger();
+        int height = info[QStringLiteral("height")].toInteger();
+        double resolution = info[QStringLiteral("resolution")].toDouble();
 
-        QCborMap origin = info[QString("origin")].toMap()[QString("position")].toMap();
-        double originX = origin[QString("x")].toDouble();
-        double originY = origin[QString("y")].toDouble();
+        QCborMap origin = info[QStringLiteral("origin")].toMap()[QStringLiteral("position")].toMap();
+        double originX = origin[QStringLiteral("x")].toDouble();
+        double originY = origin[QStringLiteral("y")].toDouble();
 
         // 1. 获取数据
-        QByteArray mapData = extractByteArray(msg[QString("data")]);
+        QByteArray mapData = extractByteArray(msg[QStringLiteral("data")]);
 
         // 兼容性处理
-        if (mapData.isEmpty() && !msg[QString("data")].isByteArray() && !msg[QString("data")].isTag())
+        if (mapData.isEmpty() && !msg[QStringLiteral("data")].isByteArray() && !msg[QStringLiteral("data")].isTag())
         {
-            if (msg[QString("data")].isArray())
+            if (msg[QStringLiteral("data")].isArray())
             {
-                QCborArray arr = msg[QString("data")].toArray();
+                QCborArray arr = msg[QStringLiteral("data")].toArray();
                 mapData.resize(arr.size());
                 char *ptr = mapData.data();
                 for (auto v : arr)
@@ -175,12 +175,12 @@ private:
     void parseScanCbor(const QCborValue &msgVal)
     {
         QCborMap msg = msgVal.toMap();
-        double angle_min = msg[QString("angle_min")].toDouble();
-        double angle_increment = msg[QString("angle_increment")].toDouble();
-        double range_min = msg[QString("range_min")].toDouble();
-        double range_max = msg[QString("range_max")].toDouble();
+        double angle_min = msg[QStringLiteral("angle_min")].toDouble();
+        double angle_increment = msg[QStringLiteral("angle_increment")].toDouble();
+        double range_min = msg[QStringLiteral("range_min")].toDouble();
+        double range_max = msg[QStringLiteral("range_max")].toDouble();
 
-        QCborValue rangesVal = msg[QString("ranges")];
+        QCborValue rangesVal = msg[QStringLiteral("ranges")];
         QVector<QPointF> points;
 
         // 1. 尝试提取二进制数据 (Tag 或者 直接 ByteArray)
