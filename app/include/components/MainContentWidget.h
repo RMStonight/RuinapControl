@@ -3,6 +3,8 @@
 
 #include <QWidget>
 #include <QTabBar>
+#include "components/MonitorWidget.h"
+#include "components/BottomInfoBar.h"
 
 // 前置声明
 class QTabWidget;
@@ -14,18 +16,31 @@ class MainContentWidget : public QWidget
 public:
     explicit MainContentWidget(QWidget *parent = nullptr);
 
+    // 提供一个公共接口给外部（如 MainWindow）用来更新数据
+    // 这样外部不需要知道 m_bottomBar 的存在，符合封装原则
+    void updateBottomBarData(const QString &key, const QString &value);
+
 signals:
     // 保持原有信号不变，这样 MainWindow 不需要改代码
     void testBtnClicked();
 
+private slots:
+    void handleBtnClicked();
+    // 处理 Tab 切换，控制底部栏显示/隐藏
+    void onTabChanged(int index);
+
 private:
     void initLayout();
-    
+
     // 辅助函数：快速创建一个带有简单文字的空白页，用于填充 Tab
-    QWidget* createPlaceholderTab(const QString &text);
+    QWidget *createPlaceholderTab(const QString &text);
 
     QTabWidget *m_tabWidget; // Tab 容器
     QPushButton *m_testBtn;  // 保留原来的按钮
+
+    MonitorWidget *m_monitorTab;    //  monitor 标签页
+
+    BottomInfoBar *m_bottomBar;     // 底部栏
 };
 
 #endif // MAINCONTENTWIDGET_H

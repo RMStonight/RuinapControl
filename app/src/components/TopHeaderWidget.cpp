@@ -240,8 +240,8 @@ void TopHeaderWidget::updateInfoFromConfig()
 // 实现公开接口
 void TopHeaderWidget::setAgvInfo(const QString &id, const QString &ip)
 {
-    m_agvIdLabel->setText(QString("AGV编号：<span style='color: #016f56;'>%1</span>").arg(id));
-    m_ipLabel->setText(QString("IP：<span style='color: #016f56;'>%1</span>").arg(ip));
+    m_agvIdLabel->setText(QStringLiteral("AGV编号：<span style='color: #016f56;'>%1</span>").arg(id));
+    m_ipLabel->setText(QStringLiteral("IP：<span style='color: #016f56;'>%1</span>").arg(ip));
 }
 
 void TopHeaderWidget::setBatteryLevel(int level)

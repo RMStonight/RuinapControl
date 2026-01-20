@@ -3,6 +3,8 @@
 
 #include <QObject>
 #include <QString>
+#include <QReadWriteLock>
+#include <atomic>
 
 class ConfigManager : public QObject
 {
@@ -10,7 +12,7 @@ class ConfigManager : public QObject
 
 public:
     // 获取单例实例
-    static ConfigManager* instance();
+    static ConfigManager *instance();
 
     // 初始化/加载配置 (在 main.cpp 调用)
     void load();
@@ -63,26 +65,29 @@ signals:
 
 private:
     explicit ConfigManager(QObject *parent = nullptr); // 私有构造
-    
+
     // 内存中的变量缓存
     // 车体参数
     QString m_agvId;
     QString m_agvIp;
-    int m_maxSpeed;
+    std::atomic<int> m_maxSpeed;
     // 文件夹路径
     QString m_resourceFolder;
     QString m_mapPngFolder;
     // 网络通信
     QString m_commIp;
-    int m_commPort;
+    std::atomic<int> m_commPort;
     QString m_rosbridgeIp;
-    int m_rosbridgePort;
+    std::atomic<int> m_rosbridgePort;
     QString m_serverIp;
-    int m_serverPort;
+    std::atomic<int> m_serverPort;
     // 系统运行
-    bool m_autoConnect;
-    bool m_debugMode;
-    bool m_fullScreen;
+    std::atomic<bool> m_autoConnect;
+    std::atomic<bool> m_debugMode;
+    std::atomic<bool> m_fullScreen;
+    
+    // mutable 允许在 const 函数中加锁
+    mutable QReadWriteLock m_lock;
 };
 
 #endif // CONFIGMANAGER_H

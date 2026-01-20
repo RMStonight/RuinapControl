@@ -21,15 +21,16 @@ set(SOURCES
     src/components/MainContentWidget.cpp
     src/components/SystemSettingsWidget.cpp
     src/components/MonitorWidget.cpp
+    src/components/BottomInfoBar.cpp
 
     include/utils/ConfigManager.h
     include/utils/RosBridgeClient.h
-    include/utils/RosDataWorker.h
     include/MainWindow.h
     include/components/TopHeaderWidget.h
     include/components/MainContentWidget.h
     include/components/SystemSettingsWidget.h
     include/components/MonitorWidget.h
+    include/components/BottomInfoBar.h
 
     resources/app.qrc
 )

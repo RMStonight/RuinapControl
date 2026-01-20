@@ -6,6 +6,7 @@
 #include <QVector>
 #include <QPointF>
 #include <QTouchEvent>
+#include <QThread>
 
 class RosBridgeClient;
 
@@ -14,6 +15,10 @@ class MonitorWidget : public QWidget
     Q_OBJECT
 public:
     explicit MonitorWidget(QWidget *parent = nullptr);
+    ~MonitorWidget();
+
+    // 载入本地地图文件
+    void loadLocalMap(const QString &imagePath, double resolution, double originX, double originY);
 
 protected:
     void paintEvent(QPaintEvent *event) override;
@@ -23,7 +28,6 @@ protected:
     bool event(QEvent *event) override;
 
 private slots:
-    void updateMap(const QImage &img, double x, double y, double res);
     void updateScan(const QVector<QPointF> &points);
 
 private:
@@ -31,18 +35,21 @@ private:
 
 private:
     RosBridgeClient *m_rosClient;
+    QThread *m_rosThread;
 
     // 数据缓存
-    QImage m_mapImage;
+    QPixmap m_mapPixmap;
     double m_mapOriginX = 0;
     double m_mapOriginY = 0;
     double m_mapResolution = 0.05;
     bool m_hasMap = false;
 
     QVector<QPointF> m_scanPoints;
+    // 增加成员变量缓存“线”
+    QVector<QLineF> m_scanLines;
 
     // 视图变换参数 (缩放、平移)
-    double m_scale = 20.0;                // 初始缩放：1米 = 20像素
+    double m_scale = 50.0;                // 初始缩放：1米 = 20像素
     QPointF m_offset = QPointF(400, 300); // 视图中心偏移
     QPointF m_lastMousePos;
 

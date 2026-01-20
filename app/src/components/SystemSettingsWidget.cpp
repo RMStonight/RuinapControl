@@ -95,12 +95,12 @@ void SystemSettingsWidget::initUI()
     folderLayout->setVerticalSpacing(10);
 
     m_resourceFolderEdit = new QLineEdit(this);
-    m_resourceFolderEdit->setPlaceholderText("/home/ruinap/config_qt/resource");
+    m_resourceFolderEdit->setPlaceholderText("请填写存放资源的文件夹");
     m_resourceFolderEdit->setFixedWidth(200);
     folderLayout->addRow("Resource Folder:", m_resourceFolderEdit);
 
     m_mapPngFolderEdit = new QLineEdit(this);
-    m_mapPngFolderEdit->setPlaceholderText("/home/ruinap/maps");
+    m_mapPngFolderEdit->setPlaceholderText("请填写存放png地图的文件夹");
     m_mapPngFolderEdit->setFixedWidth(200);
     folderLayout->addRow("MapPng Folder:", m_mapPngFolderEdit);
 
@@ -116,7 +116,7 @@ void SystemSettingsWidget::initUI()
     netLayout->setVerticalSpacing(10);
 
     m_commIpEdit = new QLineEdit(this);
-    m_commIpEdit->setPlaceholderText("192.168.1.1");
+    m_commIpEdit->setPlaceholderText("127.0.0.1");
     m_commIpEdit->setFixedWidth(200);
 
     m_commPortBox = new QSpinBox(this);
@@ -127,7 +127,7 @@ void SystemSettingsWidget::initUI()
     netLayout->addRow("数据通讯端口:", m_commPortBox);
 
     m_rosBridgeIpEdit = new QLineEdit(this);
-    m_rosBridgeIpEdit->setPlaceholderText("192.168.1.1");
+    m_rosBridgeIpEdit->setPlaceholderText("127.0.0.1");
     m_rosBridgeIpEdit->setFixedWidth(200);
 
     m_rosBridgePortBox = new QSpinBox(this);
@@ -138,7 +138,7 @@ void SystemSettingsWidget::initUI()
     netLayout->addRow("RosBridge 端口:", m_rosBridgePortBox);
 
     m_serverIpEdit = new QLineEdit(this);
-    m_serverIpEdit->setPlaceholderText("192.168.1.1");
+    m_serverIpEdit->setPlaceholderText("127.0.0.1");
     m_serverIpEdit->setFixedWidth(200);
 
     m_serverPortBox = new QSpinBox(this);
@@ -195,7 +195,7 @@ void SystemSettingsWidget::initUI()
 
     // 版本号 Label
     // 使用 qApp->applicationVersion() 动态获取，不要写死在这里
-    QLabel *versionLabel = new QLabel(QString("Ver: %1").arg(qApp->applicationVersion()), bottomBar);
+    QLabel *versionLabel = new QLabel(QStringLiteral("Ver: %1").arg(qApp->applicationVersion()), bottomBar);
     // 设置样式：灰色、小字体、左边距隔开一点
     versionLabel->setStyleSheet("color: #C0C4CC; font-size: 11px; margin-left: 15px; font-family: Arial;");
     versionLabel->setObjectName("versionLabel");

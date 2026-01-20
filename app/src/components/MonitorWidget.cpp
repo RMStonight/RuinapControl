@@ -9,56 +9,108 @@
 
 MonitorWidget::MonitorWidget(QWidget *parent) : QWidget(parent)
 {
-    // 黑色背景，显专业
     this->setStyleSheet("background-color: #1E1E1E;");
-
-    // 开启触摸事件支持，这是工控机触屏的关键
     setAttribute(Qt::WA_AcceptTouchEvents);
 
-    // 初始化 ROS 客户端
-    m_rosClient = new RosBridgeClient(this);
+    ConfigManager *cfg = ConfigManager::instance();
 
-    connect(m_rosClient, &RosBridgeClient::mapReceived, this, &MonitorWidget::updateMap);
+    // 直接加载本地地图
+    // 假设你的图片在资源文件中，且你知道原点是 (-10, -10)，分辨率 0.05
+    QString mapUrl = cfg->mapPngFolder();
+    if (!mapUrl.endsWith("/"))
+    {
+        mapUrl += "/";
+    }
+    loadLocalMap(mapUrl + "/2.png", 0.02, 0, 0);
+
+    // 创建线程
+    m_rosThread = new QThread(this);
+
+    // 创建 Client (注意：不能传 this 作为 parent，否则无法移动线程)
+    m_rosClient = new RosBridgeClient();
+
+    // 移动到子线程
+    m_rosClient->moveToThread(m_rosThread);
+
+    // 连接信号槽 (UI 更新逻辑不变)
     connect(m_rosClient, &RosBridgeClient::scanReceived, this, &MonitorWidget::updateScan);
 
-    // 从配置读取 IP 并连接
-    QString ip = ConfigManager::instance()->rosBridgeIp();
-    int port = ConfigManager::instance()->rosBridgePort(); // 假设 rosbridge 也是这个端口，或者在 Config 里加个 websocket 端口
-    // 默认 rosbridge 端口通常是 9090
-    QString url = QString("ws://%1:%2").arg(ip).arg(port);
+    // 启动连接逻辑
+    // 当线程启动时，调用 connectToRos。使用 QueueConnection 确保在子线程执行
+    QString ip = cfg->rosBridgeIp();
+    int port = cfg->rosBridgePort();
+    QString url = QStringLiteral("ws://%1:%2").arg(ip).arg(port);
 
-    m_rosClient->connectToRos(url);
+    connect(m_rosThread, &QThread::started, m_rosClient, [this, url]()
+            { m_rosClient->connectToRos(url); });
+
+    // 资源清理：当 Widget 销毁时，退出线程
+    connect(m_rosThread, &QThread::finished, m_rosClient, &QObject::deleteLater);
+
+    // 启动线程
+    m_rosThread->start();
 }
 
-void MonitorWidget::updateMap(const QImage &img, double x, double y, double res)
+// 析构函数中记得退出线程 (如果 MonitorWidget.cpp 没有析构函数，可以加一个)
+MonitorWidget::~MonitorWidget()
 {
-    m_mapImage = img;
-    m_mapOriginX = x;
-    m_mapOriginY = y;
-    m_mapResolution = res;
-    m_hasMap = true;
-    update(); // 触发重绘
-    qDebug() << "update map";
+    if (m_rosThread->isRunning())
+    {
+        m_rosThread->quit();
+        m_rosThread->wait();
+    }
 }
 
+// 更新 scan 
 void MonitorWidget::updateScan(const QVector<QPointF> &points)
 {
-    // [DEBUG] 偶尔打印一下 scan 数量，防止刷屏
-    // static int counter = 0;
-    // if (counter++ % 20 == 0) {
-    //     qDebug() << "UI: Scan Received, count:" << points.size();
-    // }
+    m_scanPoints = points; // 保留原始数据以备不时之需
 
-    m_scanPoints = points;
+    // 【预计算】在这里生成绘制所需的 Line
+    const double epsilon = 0.001;
+    m_scanLines.clear();
+    m_scanLines.reserve(points.size());
+
+    for (const QPointF &p : points)
+    {
+        m_scanLines.append(QLineF(p, QPointF(p.x() + epsilon, p.y())));
+    }
+
     update(); // 触发重绘
-    
 }
 
+// 载入 map 的本地 png 格式文件
+void MonitorWidget::loadLocalMap(const QString &imagePath, double resolution, double originX, double originY)
+{
+    // 加载图片
+    QImage img(imagePath);
+    if (img.isNull())
+    {
+        qWarning() << "Failed to load map from:" << imagePath;
+        return;
+    }
+
+    // 赋值给成员变量 (这些变量原本是在 updateMap 中赋值的)
+    // 建议：直接转为 QPixmap 以优化渲染性能 (参考之前的优化建议)
+    m_mapPixmap = QPixmap::fromImage(img);
+
+    m_mapResolution = resolution;
+    m_mapOriginX = originX;
+    m_mapOriginY = originY;
+    m_hasMap = true;
+
+    // 3. 触发重绘
+    update();
+
+    qDebug() << "Local map loaded. Size:" << img.size() << "Res:" << resolution << "Origin:" << originX << originY;
+}
+
+// 重载 paintEvent 方法，实际上是场景重绘
 void MonitorWidget::paintEvent(QPaintEvent *event)
 {
     Q_UNUSED(event);
     QPainter painter(this);
-    painter.setRenderHint(QPainter::Antialiasing);
+    painter.setRenderHint(QPainter::Antialiasing, true);
 
     // 设置坐标系
     // 将原点移动到屏幕中心 + 偏移量
@@ -83,34 +135,20 @@ void MonitorWidget::paintEvent(QPaintEvent *event)
         // 图片左上角的世界坐标 = origin
 
         // 缩放：像素 -> 米
-        double worldWidth = m_mapImage.width() * m_mapResolution;
-        double worldHeight = m_mapImage.height() * m_mapResolution;
+        double worldWidth = m_mapPixmap.width() * m_mapResolution;
+        double worldHeight = m_mapPixmap.height() * m_mapResolution;
 
         // 移动到地图原点
         // 注意：这里需要仔细调试坐标系翻转问题，暂时按标准 2D 逻辑写
-        painter.scale(1, -1); // 翻转 Y 轴，让向上为正
+        // painter.scale(1, -1); // 翻转 Y 轴，让向上为正
         painter.translate(m_mapOriginX, m_mapOriginY);
 
         // 绘制图片 (将图片缩放到世界尺寸)
         // QPainter 绘制图片是以像素为单位，所以要反向缩放回来或者直接用 drawImage 的 target rect
-        QRectF targetRect(0, 0, worldWidth, worldHeight);
-        // source rect 保持默认
-        painter.drawImage(targetRect, m_mapImage);
+        QRectF targetRect(0, -worldHeight, worldWidth, worldHeight);
+        painter.drawPixmap(targetRect, m_mapPixmap, m_mapPixmap.rect());
 
         painter.restore();
-    }
-
-    // 绘制雷达点 (LaserScan)
-    if (!m_scanPoints.isEmpty())
-    {
-        painter.setPen(Qt::NoPen);
-        painter.setBrush(QColor(255, 0, 0, 200)); // 半透明红色
-
-        for (const QPointF &p : m_scanPoints)
-        {
-            // 绘制半径为 0.05米 的小圆点
-            painter.drawEllipse(p, 0.05, 0.05);
-        }
     }
 
     // 绘制 AGV 自身图标
@@ -119,13 +157,29 @@ void MonitorWidget::paintEvent(QPaintEvent *event)
     QPolygonF agvShape;
     agvShape << QPointF(0.2, 0) << QPointF(-0.1, 0.1) << QPointF(-0.1, -0.1);
     painter.drawPolygon(agvShape);
+
+    // 绘制雷达点
+    if (!m_scanLines.isEmpty())
+    {
+        QPen pen(Qt::red);
+        pen.setCosmetic(true);
+        pen.setWidth(5);
+        pen.setCapStyle(Qt::RoundCap);
+
+        painter.setPen(pen);
+        painter.setBrush(Qt::NoBrush);
+
+        // 【极速】直接绘制缓存好的线，零计算量
+        painter.drawLines(m_scanLines);
+    }
 }
 
 // 鼠标交互：平移
 void MonitorWidget::mousePressEvent(QMouseEvent *event)
 {
     // 如果正在进行触摸操作，忽略鼠标事件，防止逻辑冲突
-    if (m_touchActive) return;
+    if (m_touchActive)
+        return;
 
     if (event->button() == Qt::LeftButton)
     {
@@ -135,7 +189,8 @@ void MonitorWidget::mousePressEvent(QMouseEvent *event)
 
 void MonitorWidget::mouseMoveEvent(QMouseEvent *event)
 {
-    if (m_touchActive) return;
+    if (m_touchActive)
+        return;
 
     if (event->buttons() & Qt::LeftButton)
     {
@@ -190,7 +245,8 @@ void MonitorWidget::wheelEvent(QWheelEvent *event)
 bool MonitorWidget::event(QEvent *event)
 {
     // 拦截触摸事件
-    switch (event->type()) {
+    switch (event->type())
+    {
     case QEvent::TouchBegin:
     case QEvent::TouchUpdate:
     case QEvent::TouchEnd:
@@ -211,9 +267,12 @@ void MonitorWidget::handleTouchEvent(QTouchEvent *event)
     const QList<QTouchEvent::TouchPoint> &points = event->touchPoints();
 
     // 状态标记
-    if (event->type() == QEvent::TouchBegin) {
+    if (event->type() == QEvent::TouchBegin)
+    {
         m_touchActive = true;
-    } else if (event->type() == QEvent::TouchEnd || event->type() == QEvent::TouchCancel) {
+    }
+    else if (event->type() == QEvent::TouchEnd || event->type() == QEvent::TouchCancel)
+    {
         m_touchActive = false;
     }
 
@@ -224,7 +283,8 @@ void MonitorWidget::handleTouchEvent(QTouchEvent *event)
         QPointF currentPos = points.first().pos();
         QPointF lastPos = points.first().lastPos();
 
-        if (event->type() == QEvent::TouchUpdate) {
+        if (event->type() == QEvent::TouchUpdate)
+        {
             QPointF delta = currentPos - lastPos;
             m_offset += delta;
             update();
@@ -246,30 +306,32 @@ void MonitorWidget::handleTouchEvent(QTouchEvent *event)
         double currentDist = QLineF(p1, p2).length();
         double lastDist = QLineF(p1Last, p2Last).length();
 
-        if (lastDist > 0.1) 
+        if (lastDist > 0.1)
         {
             double scaleFactor = currentDist / lastDist;
             double newScale = m_scale * scaleFactor;
 
             // 限制范围
-            if (newScale < 1.0) newScale = 1.0;
-            if (newScale > 500.0) newScale = 500.0;
+            if (newScale < 1.0)
+                newScale = 1.0;
+            if (newScale > 500.0)
+                newScale = 500.0;
 
             // 以手势中心为锚点缩放
             // World = (Screen - Offset) / Scale
             QPointF worldPos = (currentCenter - m_offset) / m_scale;
-            
+
             m_scale = newScale;
 
             // NewOffset = Screen - World * NewScale
             m_offset = currentCenter - (worldPos * m_scale);
-            
+
             // 加上双指同时移动的偏移量
             m_offset += (currentCenter - lastCenter);
 
             update();
         }
     }
-    
+
     event->accept();
 }
