@@ -1,5 +1,13 @@
 # This is a README
 
+## 20260121 V1.1.3
+
+* RosBridgeClient 新增重连机制
+* 新增 WebsocketClient 通用 websocket 客户端模块
+* 新增 CommunicationWsClient，用于调用 WebsocketClient 实现定制化的 wsClient 业务处理，定时发送轮询请求，并将接收到的消息 emit
+* 新增 AgvData，单例模式，作为 Agv 相关参数的全局变量。包含 AgvInfo、optionalINFO、AGV_TASk。并实现解析 CommunicationWsClient 接收到的消息
+* 在 TopHeaderWidget UI 区域中，通过定时器定时更新，根据最新的 AgvData 对应内容来更新。可以设置为较低频率
+
 ## 20260120 V1.1.2
 
 * 新增了 BottomInfoBar，用于在部分 tab 标签页底部显示信息栏

@@ -3,6 +3,7 @@
 #define TOPHEADERWIDGET_H
 
 #include <QWidget>
+#include <QTimer>
 
 // 左上角 logo 的命名方式
 #define TOP_LEFT_LOGO "top_left_logo.png"
@@ -15,6 +16,7 @@ class TopHeaderWidget : public QWidget
     Q_OBJECT
 public:
     explicit TopHeaderWidget(QWidget *parent = nullptr);
+    ~TopHeaderWidget();
 
     // --- 公开接口：供主窗口调用以更新显示 ---
     void setAgvInfo(const QString &id, const QString &ip);
@@ -25,6 +27,7 @@ public:
 
 private slots:
     void updateInfoFromConfig(); // 新增槽函数
+    void updateUi();
 
 private:
     void initLayout(); // 内部初始化布局
@@ -43,6 +46,14 @@ private:
 
     // 辅助函数：给 Pixmap 染色
     QPixmap colorizePixmap(const QPixmap &src, const QColor &color);
+
+    // 定时器更新 UI
+    QTimer *m_updateTimer;
+    const int UPDATE_INTERVAL_MS = 500;
+
+    void handleLightUpdate(int light);
+    void handleAgvModeUpdate(int agvMode);
+    void handleAgvStateUpdate(int agvState);
 };
 
 #endif // TOPHEADERWIDGET_H

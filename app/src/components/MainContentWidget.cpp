@@ -176,4 +176,5 @@ void MainContentWidget::handleBtnClicked()
     m_monitorTab->loadLocalMap(mapUrl + mapId, 0.02, 0, 0);
 
     // 测试更新 BottomInfoBar
+    m_bottomBar->updateValue("车体错误", "驱动器离线");
 }

@@ -12,6 +12,7 @@
 #include <QThread>
 #include <QJsonObject>
 #include <QJsonDocument>
+#include <QTimer>
 
 class RosBridgeClient : public QObject
 {
@@ -23,6 +24,7 @@ public:
 public slots:
     // 改为 Slot，因为必须在线程启动后调用
     void connectToRos(const QString &url);
+    void closeConnection();
     void subscribe(const QString &topic, const QString &type);
 
 signals:
@@ -35,16 +37,24 @@ private slots:
     void onConnected();
     void onTextMessageReceived(const QString &message);
     void onBinaryMessageReceived(const QByteArray &message);
+    // 内部处理断开连接
+    void onSocketDisconnected();
+    // 处理 Socket 错误
+    void onSocketError(QAbstractSocket::SocketError error);
+    // 执行重连
+    void doReconnect();
 
 private:
     // 解析函数 (原 Worker 的逻辑)
     void processCborMessage(const QByteArray &rawData);
-    // void parseMapCbor(const QCborValue &msg);
     void parseScanCbor(const QCborValue &msg);
     QByteArray extractByteArray(const QCborValue &val);
 
 private:
-    QWebSocket *m_webSocket; // 改为指针，确保在正确的线程初始化
+    QWebSocket *m_webSocket;    // 改为指针，确保在正确的线程初始化
+    QTimer *m_reconnectTimer;   // 重连定时器
+    QString m_url;              // 记录连接地址
+    bool m_needReconnect;       // 控制是否自动重连
 };
 
 #endif // ROSBRIDGECLIENT_H

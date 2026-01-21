@@ -16,6 +16,9 @@ set(SOURCES
     src/main.cpp
     src/utils/ConfigManager.cpp
     src/utils/RosBridgeClient.cpp
+    src/utils/WebsocketClient.cpp
+    src/utils/CommunicationWsClient.cpp
+    src/utils/AgvData.cpp
     src/MainWindow.cpp
     src/components/TopHeaderWidget.cpp
     src/components/MainContentWidget.cpp
@@ -25,6 +28,9 @@ set(SOURCES
 
     include/utils/ConfigManager.h
     include/utils/RosBridgeClient.h
+    include/utils/WebsocketClient.h
+    include/utils/CommunicationWsClient.h
+    include/utils/AgvData.h
     include/MainWindow.h
     include/components/TopHeaderWidget.h
     include/components/MainContentWidget.h

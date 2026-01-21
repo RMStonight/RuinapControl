@@ -1,13 +1,22 @@
 #include "MainWindow.h"
 #include "utils/ConfigManager.h"
+#include "AgvData.h"
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
 {
     // 构造函数里一般只做顶层调用，保持整洁
     initUI();
+
+    // 初始化通讯模块
+    m_commClient = new CommunicationWsClient(this);
+
+    // 建立连接
     setupConnections();
     applyWindowState();
+
+    // 启动通信服务
+    m_commClient->start();
 }
 
 MainWindow::~MainWindow()
@@ -45,19 +54,24 @@ void MainWindow::initUI()
 
 void MainWindow::setupConnections()
 {
-    // 示例：点击按钮修改 Header 里的数据，验证模块化是否成功
+    // 点击按钮修改 Header 里的数据，验证模块化是否成功
     connect(m_mainContent, &MainContentWidget::testBtnClicked, [this]()
             {
-        m_topHeader->setBatteryLevel(rand() % 100); // 随机设置电量
-        m_topHeader->setAgvStatus("充电中"); 
-        m_topHeader->setLightColor("#ff0000"); });
+                m_topHeader->setBatteryLevel(rand() % 100); // 随机设置电量
+                m_topHeader->setAgvStatus("充电中");
+                m_topHeader->setLightColor("#ff0000");
+                m_commClient->sendAgvStateRequest(); });
 
-    // 【新增】监听配置修改信号，实时切换全屏/窗口模式
+    // 监听配置修改信号，实时切换全屏/窗口模式
     connect(ConfigManager::instance(), &ConfigManager::configChanged,
             this, &MainWindow::applyWindowState);
+
+    // 解析 websocket 消息
+    connect(m_commClient, &CommunicationWsClient::textReceived,
+            AgvData::instance(), &AgvData::parseMsg);
 }
 
-//
+// 全屏或者取消全屏
 void MainWindow::applyWindowState()
 {
     bool isFull = ConfigManager::instance()->fullScreen();

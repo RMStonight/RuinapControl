@@ -10,6 +10,8 @@
 #include <QVariant>
 #include <QPainter>
 #include "utils/ConfigManager.h"
+#include "utils/AgvData.h"
+#include <QDebug>
 
 TopHeaderWidget::TopHeaderWidget(QWidget *parent) : QWidget(parent)
 {
@@ -34,6 +36,20 @@ TopHeaderWidget::TopHeaderWidget(QWidget *parent) : QWidget(parent)
     // 当 SystemSettingsWidget 保存后，ConfigManager 发出信号，这里自动刷新
     connect(ConfigManager::instance(), &ConfigManager::configChanged,
             this, &TopHeaderWidget::updateInfoFromConfig);
+
+    // 初始化定时器
+    m_updateTimer = new QTimer(this);
+    m_updateTimer->setInterval(UPDATE_INTERVAL_MS);
+    connect(m_updateTimer, &QTimer::timeout, this, &TopHeaderWidget::updateUi);
+    m_updateTimer->start();
+}
+
+TopHeaderWidget::~TopHeaderWidget()
+{
+    if (m_updateTimer->isActive())
+    {
+        m_updateTimer->stop();
+    }
 }
 
 void TopHeaderWidget::initLayout()
@@ -158,7 +174,7 @@ void TopHeaderWidget::initLayout()
     QWidget *reserveWidget = new QWidget(this);
     QHBoxLayout *reserveLayout = new QHBoxLayout(reserveWidget);
     reserveLayout->setContentsMargins(0, 0, 0, 0);
-    reserveLayout->setSpacing(0);               // 紧凑排列
+    reserveLayout->setSpacing(0);                // 紧凑排列
     reserveLayout->setAlignment(Qt::AlignRight); // 整体右对齐
 
     m_reserveLabel = new QLabel("备用字段", this);
@@ -181,6 +197,7 @@ void TopHeaderWidget::initLayout()
 
     m_runModeValueLabel = new QLabel("自动", this);
     m_runModeValueLabel->setFont(labelFont);
+    m_runModeValueLabel->setStyleSheet("color: #0197e4;");
     m_runModeValueLabel->setFixedWidth(labelValueWidth);                 // 【关键】设定值固定宽度，防止跳动
     m_runModeValueLabel->setAlignment(Qt::AlignLeft | Qt::AlignVCenter); // 值左对齐
 
@@ -201,6 +218,7 @@ void TopHeaderWidget::initLayout()
 
     m_agvStatusValueLabel = new QLabel("行走中", this);
     m_agvStatusValueLabel->setFont(labelFont);
+    m_agvStatusValueLabel->setStyleSheet("color: #0197e4;");
     m_agvStatusValueLabel->setFixedWidth(labelValueWidth); // 【关键】与上面对齐
     m_agvStatusValueLabel->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
 
@@ -240,8 +258,8 @@ void TopHeaderWidget::updateInfoFromConfig()
 // 实现公开接口
 void TopHeaderWidget::setAgvInfo(const QString &id, const QString &ip)
 {
-    m_agvIdLabel->setText(QStringLiteral("AGV编号：<span style='color: #016f56;'>%1</span>").arg(id));
-    m_ipLabel->setText(QStringLiteral("IP：<span style='color: #016f56;'>%1</span>").arg(ip));
+    m_agvIdLabel->setText(QStringLiteral("AGV编号：<span style='color: #0197e4;'>%1</span>").arg(id));
+    m_ipLabel->setText(QStringLiteral("IP：<span style='color: #0197e4;'>%1</span>").arg(ip));
 }
 
 void TopHeaderWidget::setBatteryLevel(int level)
@@ -329,4 +347,111 @@ QPixmap TopHeaderWidget::colorizePixmap(const QPixmap &src, const QColor &color)
 
     painter.end();
     return result;
+}
+
+// 更新 UI
+void TopHeaderWidget::updateUi()
+{
+    // 获取 AgvData 实例
+    AgvData *agvData = AgvData::instance();
+    // 更新 agvId
+    int agvId = agvData->agvId().value;
+    m_agvIdLabel->setText(QStringLiteral("AGV编号：<span style='color: #0197e4;'>%1</span>").arg(agvId));
+    // 更新 light 颜色
+    int light = agvData->light().value;
+    handleLightUpdate(light);
+    // 更新 battery
+    int battery = agvData->battery().value;
+    setBatteryLevel(battery);
+    // 更新 agvMode
+    int agvMode = agvData->agvMode().value;
+    handleAgvModeUpdate(agvMode);
+    // 更新 agvState
+    int agvState = agvData->agvState().value;
+    handleAgvStateUpdate(agvState);
+}
+
+// 处理 light 更新
+void TopHeaderWidget::handleLightUpdate(int light)
+{
+    switch (light)
+    {
+    case 0:
+        setLightColor("#aaaaaa");
+        break;
+
+    case 1:
+        setLightColor("#ff0000");
+        break;
+
+    case 2:
+        setLightColor("#00ff00");
+        break;
+
+    case 3:
+        setLightColor("#0000ff");
+        break;
+
+    case 4:
+        setLightColor("#ffff00");
+        break;
+
+    case 5:
+        setLightColor("#ff00ff");
+        break;
+
+    case 6:
+        setLightColor("#00ffff");
+        break;
+
+    case 7:
+        setLightColor("#ffffff");
+        break;
+
+    default:
+        // 不做处理
+        break;
+    }
+}
+
+void TopHeaderWidget::handleAgvModeUpdate(int agvMode)
+{
+    if (agvMode == 0)
+    {
+        setRunMode("手动");
+    }
+    else
+    {
+        setRunMode("自动");
+    }
+}
+
+void TopHeaderWidget::handleAgvStateUpdate(int agvState)
+{
+    switch (agvState)
+    {
+    case 0:
+        setAgvStatus("待命");
+        break;
+
+    case 1:
+        setAgvStatus("自动行走");
+        break;
+
+    case 2:
+        setAgvStatus("自动动作");
+        break;
+
+    case 3:
+        setAgvStatus("充电中");
+        break;
+
+    case 10:
+        setAgvStatus("暂停");
+        break;
+
+    default:
+        // 不做处理
+        break;
+    }
 }

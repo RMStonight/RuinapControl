@@ -41,28 +41,28 @@ void BottomInfoBar::initLayout()
     // =======================================================
     QList<ItemConfig> items = {
         // 第一行 (正常 1 格)
-        {"起点 X", 1},
-        {"起点 Y", 1},
-        {"终点 X", 1},
-        {"终点 Y", 1},
+        {"起点X", 1},
+        {"起点Y", 1},
+        {"终点X", 1},
+        {"终点Y", 1},
         {"当前点位", 1},
         {"载货状态", 1},
-        {"时长 T", 1},
-        {"里程 O", 1},
+        {"时长T", 1},
+        {"里程O", 1},
 
         // 第二行 (正常 1 格)
-        {"速度 X", 1},
-        {"速度 Y", 1},
-        {"速度 W", 1},
-        {"方向 D", 1},
+        {"速度X", 1},
+        {"速度Y", 1},
+        {"速度W", 1},
+        {"方向D", 1},
         {"任务动作", 1},
         {"急停状态", 1},
         {"任务编号", 2},
 
         // 第三行 (正常 1 格)
-        {"坐标 X", 1},
-        {"坐标 Y", 1},
-        {"角度 A", 1},
+        {"坐标X", 1},
+        {"坐标Y", 1},
+        {"角度A", 1},
         {"协方差", 1},
         {"可选错误", 1},
         {"任务错误", 1},
@@ -109,7 +109,7 @@ void BottomInfoBar::addStatusItem(QGridLayout *layout, const QString &key, int r
     lblKey->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
 
     QLabel *lblValue = new QLabel("0", itemWidget);
-    lblValue->setStyleSheet("color: #009900; font-weight: bold; font-size: 13px;");
+    lblValue->setStyleSheet("color: #0197e4; font-weight: bold; font-size: 13px;");
 
     // 如果跨度比较大（例如任务消息），可以让 Value Label 自动拉伸，不要被挤到左边
     if (colSpan > 1)
