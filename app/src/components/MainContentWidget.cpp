@@ -1,13 +1,11 @@
 #include "components/MainContentWidget.h"
 #include <QVBoxLayout>
 #include <QTabWidget>
-#include <QPushButton>
 #include <QLabel>
 #include <QFile>
 #include <QTextStream>
 #include <QDebug>
 #include "components/SystemSettingsWidget.h"
-#include "utils/ConfigManager.h"
 
 MainContentWidget::MainContentWidget(QWidget *parent) : QWidget(parent)
 {
@@ -16,12 +14,6 @@ MainContentWidget::MainContentWidget(QWidget *parent) : QWidget(parent)
 
     // 初始化布局
     initLayout();
-
-    // 连接信号（逻辑不变）
-    // 虽然按钮现在是在 Tab 里面，但信号依然从 MainContentWidget 发出
-    // 外部 MainWindow 不需要知道按钮藏得有多深
-    connect(m_testBtn, &QPushButton::clicked, this, &MainContentWidget::testBtnClicked);
-    connect(m_testBtn, &QPushButton::clicked, this, &MainContentWidget::handleBtnClicked);
 }
 
 void MainContentWidget::initLayout()
@@ -54,21 +46,10 @@ void MainContentWidget::initLayout()
     tabBar->setExpanding(true);
 
     // ==========================================
-    // Tab 1: 车辆信息 (保留原来的测试按钮)
+    // Tab 1: 车辆信息
     // ==========================================
-    QWidget *tabOverview = new QWidget();
-    QVBoxLayout *overviewLayout = new QVBoxLayout(tabOverview);
-    overviewLayout->setContentsMargins(0, 20, 0, 0);
-
-    m_testBtn = new QPushButton("点击测试 Header 更新", tabOverview);
-    m_testBtn->setFixedSize(180, 50);
-
-    overviewLayout->addStretch();
-    overviewLayout->addWidget(new QLabel("这里是车辆信息页面", tabOverview), 0, Qt::AlignCenter);
-    overviewLayout->addWidget(m_testBtn, 0, Qt::AlignCenter);
-    overviewLayout->addStretch();
-
-    m_tabWidget->addTab(tabOverview, "车辆信息");
+    m_vehicleInfoTab = new VehicleInfoWidget(this);
+    m_tabWidget->addTab(m_vehicleInfoTab, "车辆信息");
 
     // ==========================================
     // Tab 2: 手动控制
@@ -94,12 +75,12 @@ void MainContentWidget::initLayout()
     m_tabWidget->addTab(m_monitorTab, "实时监控");
 
     // ==========================================
-    // Tab 4 - 9: 其他功能页 (批量创建)
+    // Tab 4 - 8: 其他功能页 (批量创建)
     // ==========================================
     // 定义剩下的8个标签名
     QStringList tabNames = {
-        "任务管理", "可选信息",
-        "报警记录", "日志分析", "用户权限"};
+        "任务管理", "详细状态",
+        "可选信息", "日志记录", "用户权限"};
 
     for (const QString &name : tabNames)
     {
@@ -108,7 +89,7 @@ void MainContentWidget::initLayout()
     }
 
     // ==========================================
-    // 特殊处理：系统设置页面
+    // Tab 9: 系统设置页面
     // ==========================================
     SystemSettingsWidget *settingsTab = new SystemSettingsWidget(this);
     m_tabWidget->addTab(settingsTab, "系统设置"); // 将其实例化并加入 Tab
@@ -159,22 +140,4 @@ void MainContentWidget::updateBottomBarData(const QString &key, const QString &v
     if (m_bottomBar) {
         m_bottomBar->updateValue(key, value);
     }
-}
-
-void MainContentWidget::handleBtnClicked()
-{
-    // 测试切换地图
-    static bool _signal = false;
-    _signal = !_signal;
-    QString mapId = _signal ? "1.png" : "2.png";
-    QString mapUrl = ConfigManager::instance()->mapPngFolder();
-    if (!mapUrl.endsWith('/'))
-    {
-        mapUrl += "/";
-    }
-
-    m_monitorTab->loadLocalMap(mapUrl + mapId, 0.02, 0, 0);
-
-    // 测试更新 BottomInfoBar
-    m_bottomBar->updateValue("车体错误", "驱动器离线");
 }

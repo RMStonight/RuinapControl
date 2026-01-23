@@ -8,6 +8,7 @@ class QSpinBox;
 class QCheckBox;
 class QPushButton;
 class QLabel;
+class QComboBox;
 
 class SystemSettingsWidget : public QWidget
 {
@@ -30,10 +31,12 @@ private:
     QLineEdit *m_agvIdEdit;
     QLineEdit *m_agvIpEdit;
     QSpinBox *m_maxSpeedBox;
+    QComboBox *m_vehicleTypeCombo;
 
     // 文件路径
     QLineEdit *m_resourceFolderEdit;
     QLineEdit *m_mapPngFolderEdit;
+    QLineEdit *m_configFolderEdit;
 
     // 网络设置
     QLineEdit *m_commIpEdit;

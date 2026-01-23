@@ -722,7 +722,7 @@ void AgvData::parseAgvState(const QJsonObject &data)
 
     // 安全转换为 QJsonObject
     QJsonObject agvInfo = data.value("AGVInfo").toObject();
-    qDebug() << "解析 AGVInfo:" << agvInfo;
+    // qDebug() << "解析 AGVInfo:" << agvInfo;
     handleAgvInfo(agvInfo);
 
     // 解析 OptionalINFO
@@ -735,7 +735,7 @@ void AgvData::parseAgvState(const QJsonObject &data)
 
     // 安全转换为 QJsonObject
     QJsonObject optionalInfo = data.value("OptionalINFO").toObject();
-    qDebug() << "解析 OptionalINFO:" << optionalInfo;
+    // qDebug() << "解析 OptionalINFO:" << optionalInfo;
     handleOptionalInfo(optionalInfo);
 }
 
@@ -757,7 +757,7 @@ void AgvData::handleAgvInfo(const QJsonObject &data)
         }
     }
 
-    qDebug() << "Xin3.value: " << m_xin3.value << ", Yout3.value: " << m_yout3.value;
+    // qDebug() << "Xin3.value: " << m_xin3.value << ", Yout3.value: " << m_yout3.value;
 }
 
 // 处理 OptionalINFO
@@ -777,7 +777,7 @@ void AgvData::handleOptionalInfo(const QJsonObject &data)
         }
     }
 
-    qDebug() << "lift_height.value: " << m_liftHeight.value << ", optionalErr.value: " << m_optionalErr.value;
+    // qDebug() << "lift_height.value: " << m_liftHeight.value << ", optionalErr.value: " << m_optionalErr.value;
 }
 
 // 处理 AGV_TASK
@@ -797,5 +797,5 @@ void AgvData::handleAgvTask(const QJsonObject &data)
         }
     }
 
-    qDebug() << "task_start_id.value: " << m_taskStartId.value << ", taskErr.value: " << m_taskErr.value;
+    // qDebug() << "task_start_id.value: " << m_taskStartId.value << ", taskErr.value: " << m_taskErr.value;
 }

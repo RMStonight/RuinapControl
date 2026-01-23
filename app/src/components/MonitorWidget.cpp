@@ -21,7 +21,7 @@ MonitorWidget::MonitorWidget(QWidget *parent) : QWidget(parent)
     {
         mapUrl += "/";
     }
-    loadLocalMap(mapUrl + "/2.png", 0.02, 0, 0);
+    loadLocalMap(mapUrl + "2.png", 0.02, 0, 0);
 
     // 创建线程
     m_rosThread = new QThread(this);

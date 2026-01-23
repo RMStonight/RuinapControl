@@ -18,11 +18,13 @@ set(SOURCES
     src/utils/RosBridgeClient.cpp
     src/utils/WebsocketClient.cpp
     src/utils/CommunicationWsClient.cpp
+    src/utils/NetworkCheckThread.cpp
     src/utils/AgvData.cpp
     src/MainWindow.cpp
     src/components/TopHeaderWidget.cpp
     src/components/MainContentWidget.cpp
     src/components/SystemSettingsWidget.cpp
+    src/components/VehicleInfoWidget.cpp
     src/components/MonitorWidget.cpp
     src/components/BottomInfoBar.cpp
 
@@ -30,11 +32,13 @@ set(SOURCES
     include/utils/RosBridgeClient.h
     include/utils/WebsocketClient.h
     include/utils/CommunicationWsClient.h
+    include/utils/NetworkCheckThread.h
     include/utils/AgvData.h
     include/MainWindow.h
     include/components/TopHeaderWidget.h
     include/components/MainContentWidget.h
     include/components/SystemSettingsWidget.h
+    include/components/VehicleInfoWidget.h
     include/components/MonitorWidget.h
     include/components/BottomInfoBar.h
 

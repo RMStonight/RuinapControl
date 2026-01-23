@@ -5,6 +5,7 @@
 #include <QTabBar>
 #include "components/MonitorWidget.h"
 #include "components/BottomInfoBar.h"
+#include "components/VehicleInfoWidget.h"
 
 // 前置声明
 class QTabWidget;
@@ -21,11 +22,8 @@ public:
     void updateBottomBarData(const QString &key, const QString &value);
 
 signals:
-    // 保持原有信号不变，这样 MainWindow 不需要改代码
-    void testBtnClicked();
 
 private slots:
-    void handleBtnClicked();
     // 处理 Tab 切换，控制底部栏显示/隐藏
     void onTabChanged(int index);
 
@@ -38,6 +36,7 @@ private:
     QTabWidget *m_tabWidget; // Tab 容器
     QPushButton *m_testBtn;  // 保留原来的按钮
 
+    VehicleInfoWidget *m_vehicleInfoTab;    //  vehicleInfo 标签页
     MonitorWidget *m_monitorTab;    //  monitor 标签页
 
     BottomInfoBar *m_bottomBar;     // 底部栏

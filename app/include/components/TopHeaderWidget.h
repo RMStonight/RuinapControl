@@ -4,9 +4,12 @@
 
 #include <QWidget>
 #include <QTimer>
+#include "NetworkCheckThread.h"
+#include "utils/ConfigManager.h"
 
 // 左上角 logo 的命名方式
 #define TOP_LEFT_LOGO "top_left_logo.png"
+#define ETH_IP_JSON "eth_ip.json"
 
 class QLabel;
 class QProgressBar;
@@ -24,19 +27,25 @@ public:
     void setRunMode(const QString &mode);
     void setAgvStatus(const QString &status);      
     void setLightColor(const QString &colorStr);    // 设置指示灯颜色的接口
+    void setNetworkServerIp(const QString &ip);     // 设置要Ping的服务器IP
 
 private slots:
     void updateInfoFromConfig(); // 新增槽函数
     void updateUi();
+    void onNetworkStatusChanged(QString text, bool isNormal);   // 处理网络线程返回的状态
 
 private:
+    const QString valueColor = "#007055";
     void initLayout(); // 内部初始化布局
+
+    ConfigManager *cfg;
 
     // UI 控件指针
     QLabel *m_logoLabel;
     QLabel *m_agvIdLabel;
     QLabel *m_ipLabel;
-    QLabel *m_reserveLabel;
+    QLabel *m_networkCheckNameLabel;
+    QLabel *m_networkCheckValueLabel;
     QLabel *m_runModeNameLabel;     // 显示 "运行模式："
     QLabel *m_runModeValueLabel;
     QLabel *m_agvStatusNameLabel;   // 显示 "当前状态："
@@ -49,11 +58,14 @@ private:
 
     // 定时器更新 UI
     QTimer *m_updateTimer;
-    const int UPDATE_INTERVAL_MS = 500;
+    const int UPDATE_INTERVAL_MS = 100;
 
     void handleLightUpdate(int light);
     void handleAgvModeUpdate(int agvMode);
     void handleAgvStateUpdate(int agvState);
+
+    // 网络检测线程指针
+    NetworkCheckThread *m_netThread;
 };
 
 #endif // TOPHEADERWIDGET_H

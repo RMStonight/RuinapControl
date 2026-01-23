@@ -114,7 +114,7 @@ void CommunicationWsClient::sendAgvStateRequest()
 
     // 发射信号，Qt 自动处理跨线程传输
     emit sigInternalSendText(jsonReqStateStr);
-    qDebug() << "CommunicationWsClient: 发送指令 ->" << jsonReqStateStr;
+    // qDebug() << "CommunicationWsClient: 发送指令 ->" << jsonReqStateStr;
 
     // REQUEST_AGV_TASK
     requestTask["DateTime"] = timeStr;
@@ -125,7 +125,7 @@ void CommunicationWsClient::sendAgvStateRequest()
 
     // 发射信号，Qt 自动处理跨线程传输
     emit sigInternalSendText(jsonReqTaskStr);
-    qDebug() << "CommunicationWsClient: 发送指令 ->" << jsonReqTaskStr;
+    // qDebug() << "CommunicationWsClient: 发送指令 ->" << jsonReqTaskStr;
 
     dataStamps++;
 }

@@ -9,7 +9,6 @@
 #include <QStyle>
 #include <QVariant>
 #include <QPainter>
-#include "utils/ConfigManager.h"
 #include "utils/AgvData.h"
 #include <QDebug>
 
@@ -28,14 +27,40 @@ TopHeaderWidget::TopHeaderWidget(QWidget *parent) : QWidget(parent)
         file.close();
     }
 
+    // 加载内存中的配置
+    cfg = ConfigManager::instance();
+
     initLayout();
 
     // 初始化时，直接读取配置显示
     updateInfoFromConfig();
     // 监听配置修改信号
     // 当 SystemSettingsWidget 保存后，ConfigManager 发出信号，这里自动刷新
-    connect(ConfigManager::instance(), &ConfigManager::configChanged,
+    connect(cfg, &ConfigManager::configChanged,
             this, &TopHeaderWidget::updateInfoFromConfig);
+
+    // ==========================================
+    // 【新增】初始化网络检测线程
+    // ==========================================
+    m_netThread = new NetworkCheckThread(this);
+
+    // 获取 eth_ip.json 的路径
+    QString configFolder = cfg->configFolder();
+    if (!configFolder.endsWith("/"))
+    {
+        configFolder += "/";
+    }
+    m_netThread->loadConfig(configFolder + ETH_IP_JSON);
+
+    // 设置默认服务器IP，实际使用中可以从 ConfigManager 读取
+    QString serverIp = cfg->serverIp();
+    m_netThread->setServerIp(serverIp);
+    // 连接信号槽
+    connect(m_netThread, &NetworkCheckThread::statusUpdate,
+            this, &TopHeaderWidget::onNetworkStatusChanged);
+
+    // 启动线程
+    m_netThread->start();
 
     // 初始化定时器
     m_updateTimer = new QTimer(this);
@@ -46,6 +71,14 @@ TopHeaderWidget::TopHeaderWidget(QWidget *parent) : QWidget(parent)
 
 TopHeaderWidget::~TopHeaderWidget()
 {
+    // 【新增】安全退出线程
+    if (m_netThread)
+    {
+        m_netThread->stop();
+        m_netThread->quit();
+        m_netThread->wait();
+    }
+
     if (m_updateTimer->isActive())
     {
         m_updateTimer->stop();
@@ -69,7 +102,6 @@ void TopHeaderWidget::initLayout()
     leftLayout->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
 
     // 改为从内存单例读取
-    ConfigManager *cfg = ConfigManager::instance();
     m_logoLabel = new QLabel(this);
     QString resourceFolder = cfg->resourceFolder();
     // 如果相对路径不是以 / 结尾则需要添加
@@ -164,24 +196,36 @@ void TopHeaderWidget::initLayout()
     rightLayout->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
 
     // 设置右侧字体
-    QFont labelFont;
-    labelFont.setPointSize(10);
-    labelFont.setBold(true);
-    uint8_t labelNameWidth = 80;
-    uint8_t labelValueWidth = 50;
+    QFont labelNameFont, labelValueFont;
+    labelNameFont.setPointSize(9);
+    labelNameFont.setBold(false);
+    labelValueFont.setPointSize(10);
+    labelValueFont.setBold(true);
+    uint8_t labelNameWidth = 60;
+    uint8_t labelValueWidth = 80;
 
-    // --- 备用字段 ---
-    QWidget *reserveWidget = new QWidget(this);
-    QHBoxLayout *reserveLayout = new QHBoxLayout(reserveWidget);
-    reserveLayout->setContentsMargins(0, 0, 0, 0);
-    reserveLayout->setSpacing(0);                // 紧凑排列
-    reserveLayout->setAlignment(Qt::AlignRight); // 整体右对齐
+    // --- 网络状态字段 (原备用字段) ---
+    QWidget *networkCheckWidget = new QWidget(this);
+    QHBoxLayout *networkCheckLayout = new QHBoxLayout(networkCheckWidget);
+    networkCheckLayout->setContentsMargins(0, 0, 0, 0);
+    networkCheckLayout->setSpacing(0);
+    networkCheckLayout->setAlignment(Qt::AlignLeft);
 
-    m_reserveLabel = new QLabel("备用字段", this);
-    m_reserveLabel->setFont(labelFont);
-    m_reserveLabel->setFixedWidth(labelNameWidth + labelValueWidth); // 【关键】设定名称固定宽度
+    m_networkCheckNameLabel = new QLabel("网络状态：", this);
+    m_networkCheckNameLabel->setFont(labelNameFont);
+    m_networkCheckNameLabel->setFixedWidth(labelNameWidth); // 【关键】设定名称固定宽度
+    m_networkCheckNameLabel->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
 
-    reserveLayout->addWidget(m_reserveLabel);
+    // 这里稍微改动一下布局，因为"xxx离线"可能比"备用字段"长
+    // 为了美观，我们让这个 Label 稍微宽一点，或者直接右对齐显示内容
+    m_networkCheckValueLabel = new QLabel("检测中...", this);
+    m_networkCheckValueLabel->setFont(labelValueFont);
+    // 增加宽度以容纳 "导航雷达离线" 这种较长文字 (80+50=130)
+    m_networkCheckValueLabel->setFixedWidth(labelValueWidth);
+    m_networkCheckValueLabel->setAlignment(Qt::AlignLeft | Qt::AlignVCenter); // 文字右对齐看起来比较整齐
+
+    networkCheckLayout->addWidget(m_networkCheckNameLabel);
+    networkCheckLayout->addWidget(m_networkCheckValueLabel);
 
     // --- 运行模式行 (水平布局) ---
     QWidget *runModeWidget = new QWidget(this);
@@ -191,13 +235,14 @@ void TopHeaderWidget::initLayout()
     runModeLayout->setAlignment(Qt::AlignRight); // 整体右对齐
 
     m_runModeNameLabel = new QLabel("运行模式：", this);
-    m_runModeNameLabel->setFont(labelFont);
+    m_runModeNameLabel->setFont(labelNameFont);
     m_runModeNameLabel->setFixedWidth(labelNameWidth); // 【关键】设定名称固定宽度
     m_runModeNameLabel->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
 
     m_runModeValueLabel = new QLabel("自动", this);
-    m_runModeValueLabel->setFont(labelFont);
-    m_runModeValueLabel->setStyleSheet("color: #0197e4;");
+    m_runModeValueLabel->setFont(labelValueFont);
+    QString _color = "color:" + valueColor;
+    m_runModeValueLabel->setStyleSheet(_color);
     m_runModeValueLabel->setFixedWidth(labelValueWidth);                 // 【关键】设定值固定宽度，防止跳动
     m_runModeValueLabel->setAlignment(Qt::AlignLeft | Qt::AlignVCenter); // 值左对齐
 
@@ -212,13 +257,13 @@ void TopHeaderWidget::initLayout()
     agvStatusLayout->setAlignment(Qt::AlignRight);
 
     m_agvStatusNameLabel = new QLabel("当前状态：", this);
-    m_agvStatusNameLabel->setFont(labelFont);
+    m_agvStatusNameLabel->setFont(labelNameFont);
     m_agvStatusNameLabel->setFixedWidth(labelNameWidth); // 【关键】与上面对齐
     m_agvStatusNameLabel->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
 
     m_agvStatusValueLabel = new QLabel("行走中", this);
-    m_agvStatusValueLabel->setFont(labelFont);
-    m_agvStatusValueLabel->setStyleSheet("color: #0197e4;");
+    m_agvStatusValueLabel->setFont(labelValueFont);
+    m_agvStatusValueLabel->setStyleSheet(_color);
     m_agvStatusValueLabel->setFixedWidth(labelValueWidth); // 【关键】与上面对齐
     m_agvStatusValueLabel->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
 
@@ -234,7 +279,7 @@ void TopHeaderWidget::initLayout()
     m_batteryBar->setFixedHeight(16);
     setBatteryLevel(85);
 
-    rightLayout->addWidget(reserveWidget);
+    rightLayout->addWidget(networkCheckWidget);
     rightLayout->addWidget(runModeWidget);
     rightLayout->addWidget(agvStatusWidget);
     rightLayout->addWidget(m_batteryBar);
@@ -250,16 +295,44 @@ void TopHeaderWidget::initLayout()
 // 私有槽函数
 void TopHeaderWidget::updateInfoFromConfig()
 {
-    ConfigManager *cfg = ConfigManager::instance();
     // 使用读取到的配置更新 UI
     setAgvInfo(cfg->agvId(), cfg->agvIp());
+}
+
+// 公开接口设置服务器IP
+void TopHeaderWidget::setNetworkServerIp(const QString &ip)
+{
+    if (m_netThread)
+    {
+        m_netThread->setServerIp(ip);
+    }
+}
+
+// 槽函数：更新UI
+void TopHeaderWidget::onNetworkStatusChanged(QString text, bool isNormal)
+{
+    m_networkCheckValueLabel->setText(text);
+
+    if (isNormal)
+    {
+        // 正常：使用配置里的 valueColor (深绿色)
+        QString style = QString("color: %1;").arg(valueColor);
+        m_networkCheckValueLabel->setStyleSheet(style);
+    }
+    else
+    {
+        // 异常：红色
+        m_networkCheckValueLabel->setStyleSheet("color: red;");
+    }
 }
 
 // 实现公开接口
 void TopHeaderWidget::setAgvInfo(const QString &id, const QString &ip)
 {
-    m_agvIdLabel->setText(QStringLiteral("AGV编号：<span style='color: #0197e4;'>%1</span>").arg(id));
-    m_ipLabel->setText(QStringLiteral("IP：<span style='color: #0197e4;'>%1</span>").arg(ip));
+    QString _agvIdLabel = QStringLiteral("AGV编号：<span style='color: %1;'>%2</span>").arg(valueColor).arg(id);
+    QString _ipLabel = QStringLiteral("IP：<span style='color: %1;'>%2</span>").arg(valueColor).arg(ip);
+    m_agvIdLabel->setText(_agvIdLabel);
+    m_ipLabel->setText(_ipLabel);
 }
 
 void TopHeaderWidget::setBatteryLevel(int level)
@@ -356,7 +429,8 @@ void TopHeaderWidget::updateUi()
     AgvData *agvData = AgvData::instance();
     // 更新 agvId
     int agvId = agvData->agvId().value;
-    m_agvIdLabel->setText(QStringLiteral("AGV编号：<span style='color: #0197e4;'>%1</span>").arg(agvId));
+    QString _agvIdLabel = QStringLiteral("AGV编号：<span style='color: %1;'>%2</span>").arg(valueColor).arg(agvId);
+    m_agvIdLabel->setText(_agvIdLabel);
     // 更新 light 颜色
     int light = agvData->light().value;
     handleLightUpdate(light);

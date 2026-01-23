@@ -193,6 +193,45 @@ QPushButton#btnSave {
     font-weight: bold;
 }
 
+QComboBox {
+    background-color: #ffffff;
+    border: 1px solid #cccccc;
+    border-radius: 3px;
+    padding: 1px 5px;
+    padding-right: 20px; /* 右侧留出空间给箭头 */
+    color: #333333;
+    font-size: 13px;
+}
+
+/* 下拉按钮区域 */
+QComboBox::drop-down {
+    subcontrol-origin: padding;
+    subcontrol-position: top right;
+    width: 25px;
+    border-left-width: 0px;
+    border-top-right-radius: 3px;
+    border-bottom-right-radius: 3px;
+}
+
+/* 自定义箭头图标 */
+/* 注意：这里直接写 qrc 路径，不需要引号 */
+QComboBox::down-arrow {
+    image: url(:/icons/arrow_down.svg); 
+    width: 12px;
+    height: 12px;
+}
+
+/* 下拉列表样式 (Popup) */
+/* 注意：QAbstractItemView 通常是独立窗口，直接用类名或组合选择器 */
+QComboBox QAbstractItemView {
+    background-color: #ffffff;
+    color: #333333;
+    border: 1px solid #cccccc;
+    selection-background-color: #409eff;
+    selection-color: #ffffff;
+    outline: 0px;
+}
+
 /* 滚动区域背景透明 */
 /* 如果你的 scrollContent 也有名字，可以用名字；如果没有，可以直接针对 QScrollArea 内部的 QWidget */
 QScrollArea > QWidget > QWidget {

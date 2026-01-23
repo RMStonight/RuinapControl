@@ -47,7 +47,7 @@ private:
     QThread *m_thread;
 
     QTimer *m_pollTimer;                // 用于持续触发请求
-    const int POLL_INTERVAL_MS = 1000;    // 轮询间隔
+    const int POLL_INTERVAL_MS = 50;    // 轮询间隔
     uint64_t dataStamps;                // 数据戳
     QJsonObject requestState;           // 轮询 AGV_STATE
     QJsonObject requestTask;            // 轮询 AGV_TASK

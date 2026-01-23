@@ -1,5 +1,11 @@
 # Qt 开发备忘
 
+## XQuartz
+
+```bash
+xhost +localhost
+```
+
 编译指令
 
 ```bash

@@ -1,5 +1,17 @@
 # This is a README
 
+## 20260122 V1.1.4
+
+* 系统配置新增了 vehicleType 和 configFolder 两个参数
+* BottomInfoBar 组件中添加定时器，用于定期更新内容
+* 新增 VehicleInfoWidget 组件，用于显示 车辆信息 页面，包括车体模型图片，防撞条以及避障区域，有无货物 的显示
+* 有无货物的显示，根据系统的 vehicleType 判断是 左右货 还是 一个货
+* TopHeaderWidget UI 区域中，右上角将 备用字段 利用，显示网络状态
+* 新增 NetworkCheckThread 子线程，用于检测网络连接
+* 检测网络连接时，优先检测 eth_ip.json 中的成员，如果有 ping 不通的，直接显示 xxx 离线
+* 检测网络连接时，如果 eth_ip.json 中的成员都正常 ping 通，那么显示与服务器间的延迟，服务器 ip 从系统配置中读取
+* 检测网络连接时，如果 eth_ip.json 中的成员都正常 ping 通，但是服务器 ping 不通，那么显示 服务器离线
+
 ## 20260121 V1.1.3
 
 * RosBridgeClient 新增重连机制

@@ -54,14 +54,6 @@ void MainWindow::initUI()
 
 void MainWindow::setupConnections()
 {
-    // 点击按钮修改 Header 里的数据，验证模块化是否成功
-    connect(m_mainContent, &MainContentWidget::testBtnClicked, [this]()
-            {
-                m_topHeader->setBatteryLevel(rand() % 100); // 随机设置电量
-                m_topHeader->setAgvStatus("充电中");
-                m_topHeader->setLightColor("#ff0000");
-                m_commClient->sendAgvStateRequest(); });
-
     // 监听配置修改信号，实时切换全屏/窗口模式
     connect(ConfigManager::instance(), &ConfigManager::configChanged,
             this, &MainWindow::applyWindowState);

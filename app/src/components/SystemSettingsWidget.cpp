@@ -15,6 +15,8 @@
 #include "utils/ConfigManager.h"
 #include <QApplication>
 #include <QMessageBox>
+#include <QComboBox>
+#include <QListView>
 
 SystemSettingsWidget::SystemSettingsWidget(QWidget *parent) : QWidget(parent)
 {
@@ -79,9 +81,17 @@ void SystemSettingsWidget::initUI()
     m_maxSpeedBox->setSuffix(" cm/s"); // 显示单位
     m_maxSpeedBox->setFixedWidth(120);
 
+    m_vehicleTypeCombo = new QComboBox(this);
+    m_vehicleTypeCombo->setFixedWidth(120);
+    // 添加选项，第二个参数是 userData (实际存储的值)
+    m_vehicleTypeCombo->addItem("双叉叉车", 1);
+    m_vehicleTypeCombo->addItem("四叉叉车", 2);
+    m_vehicleTypeCombo->setView(new QListView(this));
+
     agvLayout->addRow("AGV 编号:", m_agvIdEdit);
     agvLayout->addRow("AGV IP:", m_agvIpEdit);
     agvLayout->addRow("最大速度:", m_maxSpeedBox);
+    agvLayout->addRow("车辆类型:", m_vehicleTypeCombo);
 
     contentLayout->addLayout(agvLayout); // 加入总布局
 
@@ -97,12 +107,17 @@ void SystemSettingsWidget::initUI()
     m_resourceFolderEdit = new QLineEdit(this);
     m_resourceFolderEdit->setPlaceholderText("请填写存放资源的文件夹");
     m_resourceFolderEdit->setFixedWidth(200);
-    folderLayout->addRow("Resource Folder:", m_resourceFolderEdit);
+    folderLayout->addRow("资源文件夹:", m_resourceFolderEdit);
 
     m_mapPngFolderEdit = new QLineEdit(this);
-    m_mapPngFolderEdit->setPlaceholderText("请填写存放png地图的文件夹");
+    m_mapPngFolderEdit->setPlaceholderText("请填写存放 png 地图的文件夹");
     m_mapPngFolderEdit->setFixedWidth(200);
-    folderLayout->addRow("MapPng Folder:", m_mapPngFolderEdit);
+    folderLayout->addRow("地图文件夹:", m_mapPngFolderEdit);
+
+    m_configFolderEdit = new QLineEdit(this);
+    m_configFolderEdit->setPlaceholderText("请填写存放配置文件的文件夹");
+    m_configFolderEdit->setFixedWidth(200);
+    folderLayout->addRow("配置文件夹:", m_configFolderEdit);
 
     contentLayout->addLayout(folderLayout);
 
@@ -265,9 +280,17 @@ void SystemSettingsWidget::loadSettings()
     m_agvIdEdit->setText(cfg->agvId());
     m_agvIpEdit->setText(cfg->agvIp());
     m_maxSpeedBox->setValue(cfg->maxSpeed());
+    // 根据存储的 int 值找到对应的下拉框索引
+    int typeVal = cfg->vehicleType();
+    int index = m_vehicleTypeCombo->findData(typeVal);
+    if (index != -1)
+    {
+        m_vehicleTypeCombo->setCurrentIndex(index);
+    }
     // 文件夹路径
     m_resourceFolderEdit->setText(cfg->resourceFolder());
     m_mapPngFolderEdit->setText(cfg->mapPngFolder());
+    m_configFolderEdit->setText(cfg->configFolder());
     // 网络通讯
     m_commIpEdit->setText(cfg->commIp());
     m_commPortBox->setValue(cfg->commPort());
@@ -291,9 +314,11 @@ void SystemSettingsWidget::saveSettings()
     cfg->setAgvId(m_agvIdEdit->text());
     cfg->setAgvIp(m_agvIpEdit->text());
     cfg->setMaxSpeed(m_maxSpeedBox->value());
+    cfg->setVehicleType(m_vehicleTypeCombo->currentData().toInt());
     // 文件夹路径
     cfg->setResourceFolder(m_resourceFolderEdit->text());
     cfg->setMapPngFolder(m_mapPngFolderEdit->text());
+    cfg->setConfigFolder(m_configFolderEdit->text());
     // 网络通讯
     cfg->setCommIp(m_commIpEdit->text());
     cfg->setCommPort(m_commPortBox->value());

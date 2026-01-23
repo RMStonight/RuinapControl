@@ -1,10 +1,8 @@
 #include "components/BottomInfoBar.h"
-// =========================================================
-// [关键修复] 必须包含该头文件，否则 .cpp 中无法调用 addWidget
-// =========================================================
 #include <QGridLayout>
 #include <QLabel>
 #include <QDebug>
+#include "utils/AgvData.h"
 
 // 定义一个简单的结构体用于配置
 struct ItemConfig
@@ -27,6 +25,20 @@ BottomInfoBar::BottomInfoBar(QWidget *parent) : QWidget(parent)
         }
     )");
     initLayout();
+
+    // 初始化定时器
+    m_updateTimer = new QTimer(this);
+    m_updateTimer->setInterval(UPDATE_INTERVAL_MS);
+    connect(m_updateTimer, &QTimer::timeout, this, &BottomInfoBar::updateUi);
+    m_updateTimer->start();
+}
+
+BottomInfoBar::~BottomInfoBar()
+{
+    if (m_updateTimer->isActive())
+    {
+        m_updateTimer->stop();
+    }
 }
 
 void BottomInfoBar::initLayout()
@@ -104,12 +116,12 @@ void BottomInfoBar::addStatusItem(QGridLayout *layout, const QString &key, int r
     hBox->setSpacing(5);
 
     QLabel *lblKey = new QLabel(key + ":", itemWidget);
-    lblKey->setStyleSheet("color: #666666; font-size: 12px;");
+    lblKey->setStyleSheet(lblKeyStyle);
     lblKey->setFixedWidth(55);
     lblKey->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
 
-    QLabel *lblValue = new QLabel("0", itemWidget);
-    lblValue->setStyleSheet("color: #0197e4; font-weight: bold; font-size: 13px;");
+    QLabel *lblValue = new QLabel("NaN", itemWidget);
+    lblValue->setStyleSheet(lblValueStyleGreen);
 
     // 如果跨度比较大（例如任务消息），可以让 Value Label 自动拉伸，不要被挤到左边
     if (colSpan > 1)
@@ -138,16 +150,51 @@ void BottomInfoBar::updateValue(const QString &key, const QString &value)
     if (m_valueLabels.contains(key))
     {
         QLabel *lbl = m_valueLabels[key];
-        lbl->setText(value);
 
-        // 简单的告警逻辑：如果是错误字段且值不为0，标红
-        if ((key.contains("错误") || key.contains("状态")) && value != "0")
+        // 特殊处理显示内容以及是否标红
+        if (key.contains("可选错误") || key.contains("任务错误"))
         {
-            lbl->setStyleSheet("color: red; font-weight: bold; font-size: 13px;");
+            if (value == "" || value.isNull())
+            {
+                lbl->setText("无");
+                lbl->setStyleSheet(lblValueStyleGreen);
+            }
+            else
+            {
+                lbl->setText("报警");
+                lbl->setStyleSheet(lblValueStyleRed);
+            }
+        }
+        else if (key.contains("急停状态"))
+        {
+            lbl->setText(value);
+            if (value == "1")
+            {
+                lbl->setText("触发");
+                lbl->setStyleSheet(lblValueStyleRed);
+            }
+            else
+            {
+                lbl->setText("未触发");
+                lbl->setStyleSheet(lblValueStyleGreen);
+            }
+        }
+        else if (key.contains("车体错误"))
+        {
+            if (value == "" || value.isNull())
+            {
+                lbl->setText("无");
+                lbl->setStyleSheet(lblValueStyleGreen);
+            }
+            else
+            {
+                lbl->setText(value);
+                lbl->setStyleSheet(lblValueStyleRed);
+            }
         }
         else
         {
-            lbl->setStyleSheet("color: #009900; font-weight: bold; font-size: 13px;");
+            lbl->setText(value);
         }
     }
 }
@@ -160,4 +207,102 @@ void BottomInfoBar::updateAllValues(const QMap<QString, QString> &data)
         i.next();
         updateValue(i.key(), i.value());
     }
+}
+
+void BottomInfoBar::updateUi()
+{
+    // 获取 AgvData 实例
+    AgvData *agvData = AgvData::instance();
+    QMap<QString, QString> updateData;
+    updateData.insert("起点X", QString::number(agvData->taskStartX().value));
+    updateData.insert("起点Y", QString::number(agvData->taskStartY().value));
+    updateData.insert("终点X", QString::number(agvData->taskEndX().value));
+    updateData.insert("终点Y", QString::number(agvData->taskEndY().value));
+    updateData.insert("当前点位", QString::number(agvData->pointId().value));
+    updateData.insert("载货状态", handleGoodsState(agvData->goodsState().value));
+    updateData.insert("时长T", QString::number(agvData->runTime().value));
+    updateData.insert("里程O", QString::number(agvData->runLength().value));
+    updateData.insert("速度X", QString::number(agvData->vX().value));
+    updateData.insert("速度Y", QString::number(agvData->vY().value));
+    updateData.insert("速度W", QString::number(agvData->vAngle().value / 100.0, 'f', 2));
+    updateData.insert("方向D", handleMoveDir(agvData->moveDir().value));
+    updateData.insert("任务动作", QString::number(agvData->taskAct().value));
+    updateData.insert("急停状态", QString::number(agvData->eStopState().value));
+    updateData.insert("任务编号", agvData->taskId().value);
+    updateData.insert("坐标X", QString::number(agvData->slamX().value));
+    updateData.insert("坐标Y", QString::number(agvData->slamY().value));
+    updateData.insert("角度A", QString::number(agvData->slamAngle().value / 100.0, 'f', 2));
+    updateData.insert("协方差", QString::number(agvData->slamCov().value / 1000.0, 'f', 3));
+    updateData.insert("可选错误", agvData->optionalErr().value);
+    updateData.insert("任务错误", agvData->taskErr().value);
+    updateData.insert("任务消息", agvData->taskDescription().value);
+    updateData.insert("车体错误", agvData->agvErr().value);
+    updateAllValues(updateData);
+}
+
+const QString BottomInfoBar::handleMoveDir(int moveDir)
+{
+    QString _result = "";
+    switch (moveDir)
+    {
+    case 0:
+        _result = "停车";
+        break;
+
+    case 1:
+        _result = "前进";
+        break;
+
+    case 2:
+        _result = "后退";
+        break;
+
+    case 3:
+        _result = "左横移";
+        break;
+
+    case 4:
+        _result = "右横移";
+        break;
+
+    case 5:
+        _result = "逆原";
+        break;
+
+    case 6:
+        _result = "顺原";
+        break;
+
+    default:
+        break;
+    }
+
+    return _result;
+}
+
+const QString BottomInfoBar::handleGoodsState(int goodsState)
+{
+    QString _result = "";
+    switch (goodsState)
+    {
+    case 0:
+        _result = "无货";
+        break;
+
+    case 1:
+        _result = "单左货";
+        break;
+
+    case 2:
+        _result = "单右货";
+        break;
+
+    case 3:
+        _result = "左右货";
+        break;
+
+    default:
+        break;
+    }
+    return _result;
 }

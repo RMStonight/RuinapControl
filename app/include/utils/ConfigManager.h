@@ -24,9 +24,11 @@ public:
     QString agvId() const;
     QString agvIp() const;
     int maxSpeed() const;
+    int vehicleType() const;
     // 文件夹路径
     QString resourceFolder() const;
     QString mapPngFolder() const;
+    QString configFolder() const;
     // 网络通信
     QString commIp() const;
     int commPort() const;
@@ -44,9 +46,11 @@ public:
     void setAgvId(const QString &id);
     void setAgvIp(const QString &ip);
     void setMaxSpeed(int speed);
+    void setVehicleType(int type);
     // 文件夹路径
     void setResourceFolder(const QString &folder);
     void setMapPngFolder(const QString &folder);
+    void setConfigFolder(const QString &folder);
     // 网络通信
     void setCommIp(const QString &ip);
     void setCommPort(int port);
@@ -71,9 +75,11 @@ private:
     QString m_agvId;
     QString m_agvIp;
     std::atomic<int> m_maxSpeed;
+    std::atomic<int> m_vehicleType;     // 1 = 双叉叉车，2 = 四叉叉车
     // 文件夹路径
     QString m_resourceFolder;
     QString m_mapPngFolder;
+    QString m_configFolder;
     // 网络通信
     QString m_commIp;
     std::atomic<int> m_commPort;
