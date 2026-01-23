@@ -52,36 +52,41 @@ void BottomInfoBar::initLayout()
     // 1. 定义数据列表 (可以在这里指定某些项占据更宽的空间)
     // =======================================================
     QList<ItemConfig> items = {
-        // 第一行 (正常 1 格)
-        {"起点X", 1},
-        {"起点Y", 1},
-        {"终点X", 1},
-        {"终点Y", 1},
-        {"当前点位", 1},
+        {"坐标X", 1},
+        {"坐标Y", 1},
+        {"角度A", 1},
+        {"协方差", 1},
+        {"急停状态", 1},
         {"载货状态", 1},
         {"时长T", 1},
         {"里程O", 1},
 
-        // 第二行 (正常 1 格)
+        {"任务起点", 1},
+        {"任务起X", 1},
+        {"任务起Y", 1},
+        {"任务终点", 1},
+        {"任务终X", 1},
+        {"任务终Y", 1},
+        {"任务编号", 2},
+
+        {"路径起点", 1},
+        {"路径起X", 1},
+        {"路径起Y", 1},
+        {"路径终点", 1},
+        {"路径终X", 1},
+        {"路径终Y", 1},
+        {"任务消息", 2},
+
         {"速度X", 1},
         {"速度Y", 1},
         {"速度W", 1},
         {"方向D", 1},
         {"任务动作", 1},
-        {"急停状态", 1},
-        {"任务编号", 2},
+        {"当前点位", 1},
+        {"可选错误", 2},
 
-        // 第三行 (正常 1 格)
-        {"坐标X", 1},
-        {"坐标Y", 1},
-        {"角度A", 1},
-        {"协方差", 1},
-        {"可选错误", 1},
-        {"任务错误", 1},
-        {"任务消息", 2},
-
-        // 第四行 (特殊处理：AGV错误 比较长)
-        {"车体错误", 8}};
+        {"车体错误", 4},
+        {"任务错误", 4}};
 
     int maxColumns = 8; // 每行最大列数
     int currentRow = 0;
@@ -152,20 +157,7 @@ void BottomInfoBar::updateValue(const QString &key, const QString &value)
         QLabel *lbl = m_valueLabels[key];
 
         // 特殊处理显示内容以及是否标红
-        if (key.contains("可选错误") || key.contains("任务错误"))
-        {
-            if (value == "" || value.isNull())
-            {
-                lbl->setText("无");
-                lbl->setStyleSheet(lblValueStyleGreen);
-            }
-            else
-            {
-                lbl->setText("报警");
-                lbl->setStyleSheet(lblValueStyleRed);
-            }
-        }
-        else if (key.contains("急停状态"))
+        if (key.contains("急停状态"))
         {
             lbl->setText(value);
             if (value == "1")
@@ -179,7 +171,7 @@ void BottomInfoBar::updateValue(const QString &key, const QString &value)
                 lbl->setStyleSheet(lblValueStyleGreen);
             }
         }
-        else if (key.contains("车体错误"))
+        else if (key.contains("车体错误") || key.contains("可选错误") || key.contains("任务错误"))
         {
             if (value == "" || value.isNull())
             {
@@ -214,10 +206,18 @@ void BottomInfoBar::updateUi()
     // 获取 AgvData 实例
     AgvData *agvData = AgvData::instance();
     QMap<QString, QString> updateData;
-    updateData.insert("起点X", QString::number(agvData->taskStartX().value));
-    updateData.insert("起点Y", QString::number(agvData->taskStartY().value));
-    updateData.insert("终点X", QString::number(agvData->taskEndX().value));
-    updateData.insert("终点Y", QString::number(agvData->taskEndY().value));
+    updateData.insert("任务起点", QString::number(agvData->taskStartId().value));
+    updateData.insert("任务起X", QString::number(agvData->taskStartX().value));
+    updateData.insert("任务起Y", QString::number(agvData->taskStartY().value));
+    updateData.insert("任务终点", QString::number(agvData->taskEndId().value));
+    updateData.insert("任务终X", QString::number(agvData->taskEndX().value));
+    updateData.insert("任务终Y", QString::number(agvData->taskEndY().value));
+    updateData.insert("路径起点", QString::number(agvData->pathStartId().value));
+    updateData.insert("路径起X", QString::number(agvData->pathStartX().value));
+    updateData.insert("路径起Y", QString::number(agvData->pathStartY().value));
+    updateData.insert("路径终点", QString::number(agvData->pathEndId().value));
+    updateData.insert("路径终X", QString::number(agvData->pathEndX().value));
+    updateData.insert("路径终Y", QString::number(agvData->pathEndY().value));
     updateData.insert("当前点位", QString::number(agvData->pointId().value));
     updateData.insert("载货状态", handleGoodsState(agvData->goodsState().value));
     updateData.insert("时长T", QString::number(agvData->runTime().value));

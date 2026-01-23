@@ -6,6 +6,7 @@
 #include "components/MonitorWidget.h"
 #include "components/BottomInfoBar.h"
 #include "components/VehicleInfoWidget.h"
+#include "components/IoWidget.h"
 
 // 前置声明
 class QTabWidget;
@@ -38,6 +39,7 @@ private:
 
     VehicleInfoWidget *m_vehicleInfoTab;    //  vehicleInfo 标签页
     MonitorWidget *m_monitorTab;    //  monitor 标签页
+    IoWidget *m_ioTab;    //  Io 标签页
 
     BottomInfoBar *m_bottomBar;     // 底部栏
 };

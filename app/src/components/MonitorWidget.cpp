@@ -6,6 +6,7 @@
 #include <QMouseEvent>
 #include <QDebug>
 #include <QLineF>
+#include <QtMath>
 
 MonitorWidget::MonitorWidget(QWidget *parent) : QWidget(parent)
 {
@@ -16,12 +17,13 @@ MonitorWidget::MonitorWidget(QWidget *parent) : QWidget(parent)
 
     // 直接加载本地地图
     // 假设你的图片在资源文件中，且你知道原点是 (-10, -10)，分辨率 0.05
-    QString mapUrl = cfg->mapPngFolder();
+    mapUrl = cfg->mapPngFolder();
     if (!mapUrl.endsWith("/"))
     {
         mapUrl += "/";
     }
-    loadLocalMap(mapUrl + "2.png", 0.02, 0, 0);
+    m_mapResolution = cfg->mapResolution() / 1000.0;
+    loadLocalMap(mapUrl + m_mapName, 0, 0);
 
     // 创建线程
     m_rosThread = new QThread(this);
@@ -34,6 +36,8 @@ MonitorWidget::MonitorWidget(QWidget *parent) : QWidget(parent)
 
     // 连接信号槽 (UI 更新逻辑不变)
     connect(m_rosClient, &RosBridgeClient::scanReceived, this, &MonitorWidget::updateScan);
+    connect(m_rosClient, &RosBridgeClient::mapNameReceived, this, &MonitorWidget::handleMapName);
+    connect(m_rosClient, &RosBridgeClient::agvStateReceived, this, &MonitorWidget::updateAgvState);
 
     // 启动连接逻辑
     // 当线程启动时，调用 connectToRos。使用 QueueConnection 确保在子线程执行
@@ -61,7 +65,41 @@ MonitorWidget::~MonitorWidget()
     }
 }
 
-// 更新 scan 
+void MonitorWidget::showEvent(QShowEvent *event)
+{
+    QWidget::showEvent(event);
+    // 每次显示界面时，自动归位到小车
+    centerOnAgv();
+}
+
+void MonitorWidget::centerOnAgv()
+{
+    // 1. 获取控件当前的中心点坐标 (屏幕像素)
+    double centerX = this->width() / 2.0;
+    double centerY = this->height() / 2.0;
+
+    // 2. 获取 AGV 当前的物理坐标 (米)
+    // 对应 paintEvent 中的逻辑： x_m = m_agvX / 1000.0
+    double agvX_m = m_agvX / 1000.0;
+    double agvY_m = m_agvY / 1000.0;
+
+    // 3. 计算目标“世界坐标”在 Qt 绘图系中的位置
+    // 注意：在 paintEvent 中，Y 轴是取反的 (painter.translate(x_m, -y_m))
+    double worldX = agvX_m;
+    double worldY = -agvY_m;
+
+    // 4. 反向计算 offset
+    // 逻辑：MonitorWidget 的视图变换公式是 ScreenPos = (WorldPos * Scale) + Offset
+    // 因此：Offset = ScreenPos - (WorldPos * Scale)
+    double newOffsetX = centerX - (worldX * m_scale);
+    double newOffsetY = centerY - (worldY * m_scale);
+
+    // 5. 应用并刷新
+    m_offset = QPointF(newOffsetX, newOffsetY);
+    update();
+}
+
+// 更新 scan
 void MonitorWidget::updateScan(const QVector<QPointF> &points)
 {
     m_scanPoints = points; // 保留原始数据以备不时之需
@@ -79,8 +117,33 @@ void MonitorWidget::updateScan(const QVector<QPointF> &points)
     update(); // 触发重绘
 }
 
+// 处理 mapName
+void MonitorWidget::handleMapName(const QString mapName)
+{
+    // 判断是否需要切换地图
+    if (m_mapName != mapName)
+    {
+        loadLocalMap(mapUrl + mapName, 0, 0);
+        qDebug() << "地图切换" << m_mapName << " -> " << mapName << ", 当前地图分辨率: " << m_mapResolution;
+        m_mapName = mapName;
+    }
+}
+
+// 处理 agvState
+void MonitorWidget::updateAgvState(const QVector<int> &agvState)
+{
+    m_agvX = agvState[1];
+    m_agvY = agvState[2];
+    m_agvAngle = agvState[3];
+
+    // 触发界面重绘
+    update();
+
+    // qDebug() << "x: " << m_agvX << ", y: " << m_agvY << ", angle: " << m_agvAngle;
+}
+
 // 载入 map 的本地 png 格式文件
-void MonitorWidget::loadLocalMap(const QString &imagePath, double resolution, double originX, double originY)
+void MonitorWidget::loadLocalMap(const QString &imagePath, double originX, double originY)
 {
     // 加载图片
     QImage img(imagePath);
@@ -94,7 +157,6 @@ void MonitorWidget::loadLocalMap(const QString &imagePath, double resolution, do
     // 建议：直接转为 QPixmap 以优化渲染性能 (参考之前的优化建议)
     m_mapPixmap = QPixmap::fromImage(img);
 
-    m_mapResolution = resolution;
     m_mapOriginX = originX;
     m_mapOriginY = originY;
     m_hasMap = true;
@@ -102,76 +164,99 @@ void MonitorWidget::loadLocalMap(const QString &imagePath, double resolution, do
     // 3. 触发重绘
     update();
 
-    qDebug() << "Local map loaded. Size:" << img.size() << "Res:" << resolution << "Origin:" << originX << originY;
+    qDebug() << "Local map loaded. Size:" << img.size() << "Origin:" << originX << originY;
 }
 
-// 重载 paintEvent 方法，实际上是场景重绘
 void MonitorWidget::paintEvent(QPaintEvent *event)
 {
     Q_UNUSED(event);
     QPainter painter(this);
     painter.setRenderHint(QPainter::Antialiasing, true);
 
-    // 设置坐标系
+    // --- 1. 视图变换 (View Transform) ---
     // 将原点移动到屏幕中心 + 偏移量
     painter.translate(m_offset);
-    // 缩放
+    // 缩放 (m_scale 代表 1米 对应的像素数)
     painter.scale(m_scale, m_scale);
 
-    // --- 绘制图层 ---
-
-    // 绘制网格 (辅助线)
+    // --- 2. 绘制网格 (Grid) ---
+    painter.save();
     painter.setPen(QPen(QColor(60, 60, 60), 0)); // 极细线
-    // 画一个简单的十字准星代表 (0,0)
-    painter.drawLine(-10, 0, 10, 0);
-    painter.drawLine(0, -10, 0, 10);
+    painter.drawLine(QPointF(-0.5, 0), QPointF(0.5, 0));
+    painter.drawLine(QPointF(0, -0.5), QPointF(0, 0.5));
+    painter.restore();
 
-    // 绘制地图
+    // --- 3. 绘制地图 (Map) ---
     if (m_hasMap)
     {
         painter.save();
-        // ROS 坐标系到 Qt 图像坐标系的变换
-        // 假设 mapOrigin 是 (-10, -10)，分辨率 0.05
-        // 图片左上角的世界坐标 = origin
+        painter.translate(m_mapOriginX, m_mapOriginY);
 
-        // 缩放：像素 -> 米
         double worldWidth = m_mapPixmap.width() * m_mapResolution;
         double worldHeight = m_mapPixmap.height() * m_mapResolution;
 
-        // 移动到地图原点
-        // 注意：这里需要仔细调试坐标系翻转问题，暂时按标准 2D 逻辑写
-        // painter.scale(1, -1); // 翻转 Y 轴，让向上为正
-        painter.translate(m_mapOriginX, m_mapOriginY);
-
-        // 绘制图片 (将图片缩放到世界尺寸)
-        // QPainter 绘制图片是以像素为单位，所以要反向缩放回来或者直接用 drawImage 的 target rect
+        // 地图绘制 (假设地图原点在左下角，向上绘制)
         QRectF targetRect(0, -worldHeight, worldWidth, worldHeight);
         painter.drawPixmap(targetRect, m_mapPixmap, m_mapPixmap.rect());
 
         painter.restore();
     }
 
-    // 绘制 AGV 自身图标
-    painter.setBrush(Qt::green);
-    // 画个三角形代表 AGV
-    QPolygonF agvShape;
-    agvShape << QPointF(0.2, 0) << QPointF(-0.1, 0.1) << QPointF(-0.1, -0.1);
-    painter.drawPolygon(agvShape);
+    // --- 4. 绘制机器人与雷达 (Robot & Scan) ---
+    painter.save();
 
-    // 绘制雷达点
+    // 4.1 全局位置变换 (Global Position)
+    // 将画家移动到小车在地图上的位置
+    double x_m = m_agvX / 1000.0;
+    double y_m = m_agvY / 1000.0;
+    double theta_rad = m_agvAngle / 1000.0;
+
+    // ROS (x, y) -> Qt (x, -y)
+    // 这一步将坐标系原点定在小车中心
+    painter.translate(x_m, -y_m);
+
+    // 4.2 旋转 (Rotation)
+    // ROS 角度逆时针(CCW)为正 -> Qt 旋转顺时针(CW)
+    // 使用负号抵消方向差异
+    painter.rotate(-qRadiansToDegrees(theta_rad));
+
+    // 4.3 局部坐标系修正 (Local Frame Flip)
+    // 此时 X轴指向车头。
+    // 但 ROS Y轴指向车左，Qt Y轴指向车右(屏幕下)。
+    // 必须翻转 Y 轴，统一局部坐标系标准。
+    painter.scale(1, -1);
+
+    // --- 此时坐标系状态：原点在车中心，X轴向前，Y轴向左 (符合 ROS 标准) ---
+
+    // 4.4 绘制雷达点 (Draw Scan)
+    // 因为坐标系已经跟随小车变换，直接绘制局部雷达数据即可
     if (!m_scanLines.isEmpty())
     {
-        QPen pen(Qt::red);
-        pen.setCosmetic(true);
-        pen.setWidth(5);
-        pen.setCapStyle(Qt::RoundCap);
-
-        painter.setPen(pen);
-        painter.setBrush(Qt::NoBrush);
-
-        // 【极速】直接绘制缓存好的线，零计算量
+        QPen scanPen(Qt::red);
+        scanPen.setCosmetic(true); // 保持像素宽度，不随缩放变粗
+        scanPen.setWidth(2);
+        painter.setPen(scanPen);
         painter.drawLines(m_scanLines);
     }
+
+    // 4.5 绘制车体 (Draw AGV)
+    QPolygonF agvShape;
+    // 车头(0.3m), 左后(-0.2m, 0.2m), 右后(-0.2m, -0.2m)
+    // 因为上面做了 scale(1, -1)，这里 (0.2) 的 Y 值会正确地画在“左侧”(屏幕上方)
+    agvShape << QPointF(0.3, 0)
+             << QPointF(-0.2, 0.2)
+             << QPointF(-0.2, -0.2);
+
+    painter.setBrush(QColor(0, 191, 255, 200)); // DeepSkyBlue
+    painter.setPen(QPen(Qt::white, 0.02));
+    painter.drawPolygon(agvShape);
+
+    // 车中心点
+    painter.setBrush(Qt::red);
+    painter.setPen(Qt::NoPen);
+    painter.drawEllipse(QPointF(0, 0), 0.05, 0.05);
+
+    painter.restore();
 }
 
 // 鼠标交互：平移

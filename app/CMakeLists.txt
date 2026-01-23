@@ -27,6 +27,8 @@ set(SOURCES
     src/components/VehicleInfoWidget.cpp
     src/components/MonitorWidget.cpp
     src/components/BottomInfoBar.cpp
+    src/components/OptionalInfoWidget.cpp
+    src/components/IoWidget.cpp
 
     include/utils/ConfigManager.h
     include/utils/RosBridgeClient.h
@@ -41,6 +43,8 @@ set(SOURCES
     include/components/VehicleInfoWidget.h
     include/components/MonitorWidget.h
     include/components/BottomInfoBar.h
+    include/components/OptionalInfoWidget.h
+    include/components/IoWidget.h
 
     resources/app.qrc
 )

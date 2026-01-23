@@ -46,6 +46,7 @@ void ConfigManager::load()
     m_agvIp = settings.value("AGV/IP", "127.0.0.1").toString();
     m_maxSpeed = settings.value("AGV/MaxSpeed", 100).toInt();
     m_vehicleType = settings.value("AGV/VehicleType", 1).toInt();
+    m_mapResolution = settings.value("AGV/MapResolution", 20).toInt();
     // 文件夹路径
     m_resourceFolder = settings.value("Folder/resource", "").toString();
     m_mapPngFolder = settings.value("Folder/mapPng", "").toString();
@@ -77,6 +78,7 @@ void ConfigManager::save()
     settings.setValue("AGV/IP", m_agvIp);
     settings.setValue("AGV/MaxSpeed", m_maxSpeed.load());
     settings.setValue("AGV/VehicleType", m_vehicleType.load());
+    settings.setValue("AGV/MapResolution", m_mapResolution.load());
     // 文件夹路径
     settings.setValue("Folder/resource", m_resourceFolder);
     settings.setValue("Folder/mapPng", m_mapPngFolder);
@@ -119,6 +121,10 @@ int ConfigManager::maxSpeed() const
 int ConfigManager::vehicleType() const
 {
     return m_vehicleType.load();
+}
+int ConfigManager::mapResolution() const
+{
+    return m_mapResolution.load();
 }
 // 文件夹路径
 QString ConfigManager::resourceFolder() const
@@ -197,6 +203,10 @@ void ConfigManager::setMaxSpeed(int speed)
 void ConfigManager::setVehicleType(int type)
 {
     m_vehicleType.store(type);
+}
+void ConfigManager::setMapResolution(int res)
+{
+    m_mapResolution.store(res);
 }
 // 文件夹路径
 void ConfigManager::setResourceFolder(const QString &folder)

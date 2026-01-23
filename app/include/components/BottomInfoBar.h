@@ -24,7 +24,7 @@ private slots:
 
 private:
     const QString lblKeyStyle = "color: #666666; font-size: 12px;";
-    const QString lblValueStyleGreen = "color: #007055; font-weight: bold; font-size: 13px;";
+    const QString lblValueStyleGreen = "color: #007055; font-size: 13px;";
     const QString lblValueStyleRed = "color: red; font-weight: bold; font-size: 13px;";
     void initLayout();
 

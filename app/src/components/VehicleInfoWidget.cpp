@@ -7,10 +7,24 @@ VehicleInfoWidget::VehicleInfoWidget(QWidget *parent) : QWidget(parent)
 {
     this->setStyleSheet("background-color: #ffffff");
 
+    // --- 新增：布局初始化 ---
+    QHBoxLayout *mainLayout = new QHBoxLayout(this);
+    mainLayout->setContentsMargins(0, 0, 0, 0); // 无边距，铺满
+    mainLayout->setSpacing(0);
+    // 1. 左侧占位 (权重 2)
+    // 我们不放置实体 Widget，而是放置一个弹簧。
+    // 因为 paintEvent 是绘制在父窗口(this)上的，左侧留空即可显示绘制内容。
+    mainLayout->addStretch(2);
+    // 2. 右侧容器 (权重 1，即左右各占 50%)
+    m_optionalInfo = new OptionalInfoWidget(this);
+    m_optionalInfo->setObjectName("RightModuleContainer");
+    mainLayout->addWidget(m_optionalInfo, 1);
+    // ----------------------
+
     // 系统配置
     ConfigManager *cfg = ConfigManager::instance();
-    // 加载车辆类型
-    vehicleType = cfg->vehicleType();
+    vehicleType = cfg->vehicleType(); // 加载车辆类型
+
     // 加载图片
     QString resourceFolder = cfg->resourceFolder();
     // 如果相对路径不是以 / 结尾则需要添加
@@ -89,76 +103,88 @@ void VehicleInfoWidget::paintEvent(QPaintEvent *event)
     QPainter painter(this);
     painter.setRenderHint(QPainter::Antialiasing);
 
-    // --- 尺寸参数定义 ---
-    int agvDisplayHeight = 300; // 固定高度 300
-    // 根据原始宽高比计算显示宽度
+    // ==========================================
+    // [核心修改]：动态获取左侧区域的实际宽度
+    // ==========================================
+
+    // 方法：直接问右侧控件“你在哪？”
+    // m_optionalInfo->x() 就是它左边缘的位置，也就是左侧空白区域的宽度。
+    // 这样做的好处是：以后你改成 3:1 或 4:1，这行代码完全不用动，它自动适应！
+    int leftSectionWidth = m_optionalInfo->x();
+
+    // 如果刚初始化还没排版完（极少情况），或者为了保险，防止为0
+    if (leftSectionWidth <= 0)
+    {
+        leftSectionWidth = width() * 2 / 3; // 降级方案
+    }
+
+    QRect leftRect(0, 0, leftSectionWidth, height());
+
+    // 2. 找到左侧区域的中心点
+    int cx = leftRect.center().x();
+    int cy = leftRect.center().y();
+
+    // 3. 动态计算显示尺寸
+    // AGV 高度占左侧区域高度的 75%
+    int agvDisplayHeight = (int)(leftRect.height() * 0.75);
+
+    // 限制最大高度 (可根据需要调整)
+    if (agvDisplayHeight > 600)
+        agvDisplayHeight = 600;
+
     double aspectRatio = (double)m_agvImage.width() / m_agvImage.height();
     int agvDisplayWidth = (int)(agvDisplayHeight * aspectRatio);
 
-    int cx = width() / 2;
-    int cy = height() / 2;
+    // [宽度校验]：确保 AGV 宽度不会撑爆左侧区域 (留20px边距)
+    if (agvDisplayWidth > (leftRect.width() - 20))
+    {
+        agvDisplayWidth = leftRect.width() - 20;
+        agvDisplayHeight = (int)(agvDisplayWidth / aspectRatio);
+    }
 
     // AGV 主体的矩形区域
     QRect agvRect(cx - agvDisplayWidth / 2, cy - agvDisplayHeight / 2, agvDisplayWidth, agvDisplayHeight);
 
-    // 间距参数
-    int gap = 5;         // 物体间的间隙
-    int bumperThick = 8; // 防撞条厚度
-    int radarThick = 60; // 雷达区域厚度/宽度
+    // 间距参数 (根据 AGV 大小稍微动态化一点可能更好，这里暂时维持固定或微调)
+    int gap = 5;
+    int bumperThick = 8;
+    int radarThick = 40; // 稍微调小一点，避免在分屏后显得太大覆盖出去
 
-    // --- 绘制 AGV 本体 ---
+    // --- 下面是原有的绘制逻辑，基本无需改动，直接依赖 agvRect 即可 ---
+
+    // 绘制 AGV 本体
     painter.drawPixmap(agvRect, m_agvImage);
 
-    // --- 绘制货物 (黄色方框，高度为1/2，位于上半部分) ---
+    // 绘制货物
     if (m_cargoState > 0)
     {
         painter.save();
-
-        // 设置货物颜色 (半透明黄)
         QColor cargoColor(255, 255, 0, 150);
         painter.setBrush(cargoColor);
         QPen pen(QColor(200, 200, 0), 2);
         painter.setPen(pen);
 
-        // 计算左右货物的几何尺寸
-        // 货物总高度设为车身的一半
         int cargoHeight = agvRect.height() / 2;
 
-        // 根据车型决定绘制方式
         if (vehicleType == 1)
         {
-            // === 双叉模式 (统一绘制一个大方块) ===
-            // 不区分左右，直接覆盖整个车身宽度
             QRect fullCargoRect(agvRect.x(), agvRect.y(), agvRect.width(), cargoHeight);
-
             painter.drawRect(fullCargoRect);
-            // 画一个大叉
             painter.drawLine(fullCargoRect.topLeft(), fullCargoRect.bottomRight());
             painter.drawLine(fullCargoRect.topRight(), fullCargoRect.bottomLeft());
         }
         else if (vehicleType == 2)
         {
-            // === 四叉模式 (保留你原有的左右区分逻辑) ===
-
-            // 单个货物宽度
             int singleCargoWidth = (agvRect.width() - gap) / 2;
-
-            // 左侧货物矩形 (视觉左侧)
             QRect leftCargoRect(agvRect.x(), agvRect.y(), singleCargoWidth, cargoHeight);
-
-            // 右侧货物矩形 (视觉右侧)
             QRect rightCargoRect(agvRect.x() + singleCargoWidth + gap, agvRect.y(), singleCargoWidth, cargoHeight);
 
-            // 根据你的逻辑：State 2 为左货(视觉左)，State 1 为右货(视觉右)
-            // 绘制左货
             if (m_cargoState == 2 || m_cargoState == 3)
             {
                 painter.drawRect(leftCargoRect);
                 painter.drawLine(leftCargoRect.topLeft(), leftCargoRect.bottomRight());
                 painter.drawLine(leftCargoRect.topRight(), leftCargoRect.bottomLeft());
             }
-
-            // 绘制右货
             if (m_cargoState == 1 || m_cargoState == 3)
             {
                 painter.drawRect(rightCargoRect);
@@ -166,55 +192,43 @@ void VehicleInfoWidget::paintEvent(QPaintEvent *event)
                 painter.drawLine(rightCargoRect.topRight(), rightCargoRect.bottomLeft());
             }
         }
-
         painter.restore();
     }
 
-    // --- 绘制防撞条 (上下左右细条) ---
-    // 顶部
+    // 绘制防撞条
     QRect bumperRectTop(agvRect.left(), agvRect.top() - gap - bumperThick, agvRect.width(), bumperThick);
     drawBumper(painter, bumperRectTop, m_bumperTop);
 
-    // 底部
     QRect bumperRectBottom(agvRect.left(), agvRect.bottom() + gap, agvRect.width(), bumperThick);
     drawBumper(painter, bumperRectBottom, m_bumperBottom);
 
-    // 左侧
     QRect bumperRectLeft(agvRect.left() - gap - bumperThick, agvRect.top(), bumperThick, agvRect.height());
     drawBumper(painter, bumperRectLeft, m_bumperLeft);
 
-    // 右侧
     QRect bumperRectRight(agvRect.right() + gap, agvRect.top(), bumperThick, agvRect.height());
     drawBumper(painter, bumperRectRight, m_bumperRight);
 
-    // --- 绘制避障雷达区域 (更外层的方框) ---
+    // 绘制雷达区域
+    // 注意：如果 AGV 变大了，radarThick 可能需要适当调整，或者确保它不会画到右侧区域去。
+    // 由于我们在 calculate agvDisplayHeight 时预留了 padding，一般不会越界。
 
-    // [上雷达] 对应顶部防撞条上方
     QRect radarRectTop(bumperRectTop.left(), bumperRectTop.top() - gap - radarThick, bumperRectTop.width(), radarThick);
     drawRadarBox(painter, radarRectTop, m_radarStates[SensorZone::Top]);
 
-    // [下雷达] 对应底部防撞条下方
     QRect radarRectBottom(bumperRectBottom.left(), bumperRectBottom.bottom() + gap, bumperRectBottom.width(), radarThick);
     drawRadarBox(painter, radarRectBottom, m_radarStates[SensorZone::Bottom]);
 
-    // [左侧雷达] 需要分为"左前"和"左后"两部分
-    // 计算左侧总高度的一半，减去中间一点小间隙
     int sideRadarHeight = (bumperRectLeft.height() - gap) / 2;
 
-    // 左前 (上方)
     QRect radarRectLeftFront(bumperRectLeft.left() - gap - radarThick, bumperRectLeft.top(), radarThick, sideRadarHeight);
     drawRadarBox(painter, radarRectLeftFront, m_radarStates[SensorZone::TopLeft]);
 
-    // 左后 (下方)
     QRect radarRectLeftBack(bumperRectLeft.left() - gap - radarThick, bumperRectLeft.top() + sideRadarHeight + gap, radarThick, sideRadarHeight);
     drawRadarBox(painter, radarRectLeftBack, m_radarStates[SensorZone::BottomLeft]);
 
-    // [右侧雷达] 分为"右前"和"右后"
-    // 右前 (上方)
     QRect radarRectRightFront(bumperRectRight.right() + gap, bumperRectRight.top(), radarThick, sideRadarHeight);
     drawRadarBox(painter, radarRectRightFront, m_radarStates[SensorZone::TopRight]);
 
-    // 右后 (下方)
     QRect radarRectRightBack(bumperRectRight.right() + gap, bumperRectRight.top() + sideRadarHeight + gap, radarThick, sideRadarHeight);
     drawRadarBox(painter, radarRectRightBack, m_radarStates[SensorZone::BottomRight]);
 }

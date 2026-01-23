@@ -6,6 +6,7 @@
 RosBridgeClient::RosBridgeClient(QObject *parent) : QObject(parent), m_webSocket(nullptr)
 {
     qRegisterMetaType<QVector<QPointF>>("QVector<QPointF>");
+    qRegisterMetaType<QVector<int>>("QVector<int>");
 
     // 初始化定时器
     m_reconnectTimer = new QTimer(this);
@@ -69,6 +70,8 @@ void RosBridgeClient::onConnected()
 
     // subscribe("/map", "nav_msgs/OccupancyGrid");
     subscribe("/scan", "sensor_msgs/LaserScan");
+    subscribe("/map_name", "std_msgs/String");
+    subscribe("/agv_state", "std_msgs/Int32MultiArray");
 }
 
 // 处理 Socket 断开
@@ -164,6 +167,16 @@ void RosBridgeClient::processCborMessage(const QByteArray &rawData)
         {
             parseScanCbor(msg);
         }
+        // 处理 map_name
+        else if (topic == "/map_name")
+        {
+            parseMapNameCbor(msg);
+        }
+        // 处理 agv_state
+        else if (topic == "/agv_state")
+        {
+            parseAgvStateCbor(msg);
+        }
     }
 }
 
@@ -223,4 +236,67 @@ void RosBridgeClient::parseScanCbor(const QCborValue &msgVal)
         }
     }
     emit scanReceived(points);
+}
+
+void RosBridgeClient::parseMapNameCbor(const QCborValue &msgVal)
+{
+    // msgVal 对应 ROS 消息体
+    if (msgVal.isMap())
+    {
+        QCborMap msg = msgVal.toMap();
+        // std_msgs/String 只有一个字段: "data"
+        if (msg.contains(QStringLiteral("data")))
+        {
+            QString mapName = msg[QStringLiteral("data")].toString();
+            
+            // 发送信号
+            emit mapNameReceived(mapName);
+        }
+    }
+}
+
+void RosBridgeClient::parseAgvStateCbor(const QCborValue &msgVal)
+{
+    QVector<int> agvState;
+
+    if (msgVal.isMap())
+    {
+        QCborMap msg = msgVal.toMap();
+        
+        // 检查是否存在 "data" 字段
+        if (msg.contains(QStringLiteral("data")))
+        {
+            QCborValue dataVal = msg[QStringLiteral("data")];
+
+            // 1. 尝试作为二进制数据解析 (Rosbridge 可能会将 int32[] 压缩为字节流)
+            QByteArray byteArray = extractByteArray(dataVal);
+            if (!byteArray.isEmpty())
+            {
+                // Int32 占用 4 字节
+                int count = byteArray.size() / 4;
+                agvState.reserve(count);
+                
+                // 重新解释内存为 int32_t 指针
+                const int32_t *raw = reinterpret_cast<const int32_t *>(byteArray.constData());
+                for (int i = 0; i < count; ++i)
+                {
+                    agvState.append(static_cast<int>(raw[i]));
+                }
+            }
+            // 2. 尝试作为普通 CBOR 数组解析 (即标准 JSON 数组格式 [1, 2, 3])
+            else if (dataVal.isArray())
+            {
+                QCborArray arr = dataVal.toArray();
+                agvState.reserve(arr.size());
+                for (const QCborValue &v : arr)
+                {
+                    agvState.append(v.toInteger());
+                }
+            }
+
+            // 仅当解析出数据或确定为空数组时发送信号
+            // 这里的条件可以根据你的需求调整，是否允许发送空状态
+            emit agvStateReceived(agvState);
+        }
+    }
 }

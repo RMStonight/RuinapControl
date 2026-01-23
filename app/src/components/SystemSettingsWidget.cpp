@@ -88,10 +88,19 @@ void SystemSettingsWidget::initUI()
     m_vehicleTypeCombo->addItem("四叉叉车", 2);
     m_vehicleTypeCombo->setView(new QListView(this));
 
+    m_mapResolutionCombo = new QComboBox(this);
+    m_mapResolutionCombo->setFixedWidth(120);
+    // 添加选项，第二个参数是 userData (实际存储的值)
+    m_mapResolutionCombo->addItem("0.02", 20);
+    m_mapResolutionCombo->addItem("0.05", 50);
+    m_mapResolutionCombo->addItem("0.10", 100);
+    m_mapResolutionCombo->setView(new QListView(this));
+
     agvLayout->addRow("AGV 编号:", m_agvIdEdit);
     agvLayout->addRow("AGV IP:", m_agvIpEdit);
     agvLayout->addRow("最大速度:", m_maxSpeedBox);
     agvLayout->addRow("车辆类型:", m_vehicleTypeCombo);
+    agvLayout->addRow("地图分辨率:", m_mapResolutionCombo);
 
     contentLayout->addLayout(agvLayout); // 加入总布局
 
@@ -281,11 +290,18 @@ void SystemSettingsWidget::loadSettings()
     m_agvIpEdit->setText(cfg->agvIp());
     m_maxSpeedBox->setValue(cfg->maxSpeed());
     // 根据存储的 int 值找到对应的下拉框索引
-    int typeVal = cfg->vehicleType();
-    int index = m_vehicleTypeCombo->findData(typeVal);
-    if (index != -1)
+    int vehicleTypeVal = cfg->vehicleType();
+    int vehicleTypeIndex = m_vehicleTypeCombo->findData(vehicleTypeVal);
+    if (vehicleTypeIndex != -1)
     {
-        m_vehicleTypeCombo->setCurrentIndex(index);
+        m_vehicleTypeCombo->setCurrentIndex(vehicleTypeIndex);
+    }
+    // 根据存储的 int 值找到对应的下拉框索引
+    int resolutionVal = cfg->mapResolution();
+    int resolutionValIndex = m_mapResolutionCombo->findData(resolutionVal);
+    if (resolutionValIndex != -1)
+    {
+        m_mapResolutionCombo->setCurrentIndex(resolutionValIndex);
     }
     // 文件夹路径
     m_resourceFolderEdit->setText(cfg->resourceFolder());
@@ -315,6 +331,7 @@ void SystemSettingsWidget::saveSettings()
     cfg->setAgvIp(m_agvIpEdit->text());
     cfg->setMaxSpeed(m_maxSpeedBox->value());
     cfg->setVehicleType(m_vehicleTypeCombo->currentData().toInt());
+    cfg->setMapResolution(m_mapResolutionCombo->currentData().toInt());
     // 文件夹路径
     cfg->setResourceFolder(m_resourceFolderEdit->text());
     cfg->setMapPngFolder(m_mapPngFolderEdit->text());

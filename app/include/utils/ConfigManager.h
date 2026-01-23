@@ -25,6 +25,7 @@ public:
     QString agvIp() const;
     int maxSpeed() const;
     int vehicleType() const;
+    int mapResolution() const;
     // 文件夹路径
     QString resourceFolder() const;
     QString mapPngFolder() const;
@@ -47,6 +48,7 @@ public:
     void setAgvIp(const QString &ip);
     void setMaxSpeed(int speed);
     void setVehicleType(int type);
+    void setMapResolution(int res);
     // 文件夹路径
     void setResourceFolder(const QString &folder);
     void setMapPngFolder(const QString &folder);
@@ -76,6 +78,7 @@ private:
     QString m_agvIp;
     std::atomic<int> m_maxSpeed;
     std::atomic<int> m_vehicleType;     // 1 = 双叉叉车，2 = 四叉叉车
+    std::atomic<int> m_mapResolution;   // 20, 50, 100，地图分辨率，0.02， 0.05， 0.1
     // 文件夹路径
     QString m_resourceFolder;
     QString m_mapPngFolder;

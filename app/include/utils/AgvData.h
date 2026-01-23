@@ -7,6 +7,7 @@
 #include <QReadWriteLock>
 #include <functional>
 #include <QHash>
+#include <QJsonObject>
 
 // 为了让信号槽能用，建议定义别名
 using AgvInt = AgvAttribute<int>;
@@ -67,6 +68,7 @@ public:
     AgvInt runLength() const;
     AgvInt runTime() const;
     // OptionalINFO
+    QJsonObject optionalInfo() const;
     AgvInt liftHeight() const;
     AgvString optionalErr() const;
     // AGV_TASK
@@ -179,6 +181,9 @@ private:
     AgvInt m_pathEndX;                      // 路径终点 x 坐标
     AgvInt m_pathEndY;                      // 路径终点 y 坐标
     AgvString m_taskErr;                    // 任务错误信息，为 Null 代表无错误
+
+    // OptionalInfo 需要单独备份
+    QJsonObject m_optionalInfo;
 
     mutable QReadWriteLock m_lock;
 };

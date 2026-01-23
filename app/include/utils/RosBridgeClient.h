@@ -32,6 +32,8 @@ signals:
     void disconnected();
     // 数据信号发送给 UI
     void scanReceived(QVector<QPointF> points);
+    void mapNameReceived(QString mapName);
+    void agvStateReceived(QVector<int> agvState);
 
 private slots:
     void onConnected();
@@ -48,6 +50,9 @@ private:
     // 解析函数 (原 Worker 的逻辑)
     void processCborMessage(const QByteArray &rawData);
     void parseScanCbor(const QCborValue &msg);
+    void parseMapNameCbor(const QCborValue &msg);
+    void parseAgvStateCbor(const QCborValue &msg);
+    
     QByteArray extractByteArray(const QCborValue &val);
 
 private:

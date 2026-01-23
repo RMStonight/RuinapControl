@@ -1,6 +1,5 @@
 #include "AgvData.h"
 #include <QDebug>
-#include <QJsonObject>
 #include <QJsonDocument>
 #include <QJsonParseError>
 
@@ -92,6 +91,7 @@ void AgvData::initData()
     m_runLength = AgvInt(0, "#000000");
     m_runTime = AgvInt(0, "#000000");
     // OptionalINFO
+    m_optionalInfo = QJsonObject();
     m_liftHeight = AgvInt(0, "#000000");
     m_optionalErr = AgvString("NULL", "#000000");
     // AGV_TASK
@@ -557,6 +557,11 @@ AgvInt AgvData::runTime() const
     return m_runTime;
 }
 // OptionalINFO
+QJsonObject AgvData::optionalInfo() const
+{
+    QReadLocker lockeer(&m_lock);
+    return m_optionalInfo;
+}
 AgvInt AgvData::liftHeight() const
 {
     QReadLocker lockeer(&m_lock);
@@ -743,7 +748,9 @@ void AgvData::parseAgvState(const QJsonObject &data)
 void AgvData::handleAgvInfo(const QJsonObject &data)
 {
     // 加锁
-    QReadLocker locker(&m_lock);
+    QWriteLocker locker(&m_lock);
+
+    m_optionalInfo = data;
 
     // 遍历 JSON 中的所有 key
     for (auto it = data.constBegin(); it != data.constEnd(); ++it)
@@ -764,7 +771,9 @@ void AgvData::handleAgvInfo(const QJsonObject &data)
 void AgvData::handleOptionalInfo(const QJsonObject &data)
 {
     // 加锁
-    QReadLocker locker(&m_lock);
+    QWriteLocker locker(&m_lock);
+
+    m_optionalInfo = data;
 
     // 遍历 JSON 中的所有 key
     for (auto it = data.constBegin(); it != data.constEnd(); ++it)
@@ -784,7 +793,7 @@ void AgvData::handleOptionalInfo(const QJsonObject &data)
 void AgvData::handleAgvTask(const QJsonObject &data)
 {
     // 加锁
-    QReadLocker locker(&m_lock);
+    QWriteLocker locker(&m_lock);
 
     // 遍历 JSON 中的所有 key
     for (auto it = data.constBegin(); it != data.constEnd(); ++it)

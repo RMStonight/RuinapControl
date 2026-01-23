@@ -5,6 +5,8 @@
 #include <QImage>
 #include <QMap>
 #include <QTimer>
+#include <QHBoxLayout>
+#include "OptionalInfoWidget.h"
 
 // 车体模型的命名方式
 #define MODEL_PNG "model.png"
@@ -48,14 +50,14 @@ private slots:
     void updateUi();
 
 private:
-    // 资源
-    QPixmap m_agvImage;
+    OptionalInfoWidget *m_optionalInfo; // 右侧滚动栏区域
+    QPixmap m_agvImage; // 资源图片
 
     // 颜色
     QColor lightGreen = QColor(148, 222, 188);
     QColor lightYellow = QColor(255, 255, 172);
     QColor lightRed = QColor(241, 168, 159);
-    
+
     // 车辆类型
     int vehicleType; // 1 双叉叉车，2 四叉叉车
 

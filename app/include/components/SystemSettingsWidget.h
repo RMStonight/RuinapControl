@@ -32,6 +32,7 @@ private:
     QLineEdit *m_agvIpEdit;
     QSpinBox *m_maxSpeedBox;
     QComboBox *m_vehicleTypeCombo;
+    QComboBox *m_mapResolutionCombo;
 
     // 文件路径
     QLineEdit *m_resourceFolderEdit;

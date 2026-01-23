@@ -1,5 +1,14 @@
 # This is a README
 
+## 20260123 V1.1.5
+
+* 系统配置新增 mapResolution 参数
+* RosBridgeClient 中新增对 map_name、agv_state 的订阅与处理
+* MonitorWidget 新增地图切换逻辑，并且绘制了实时的 agv 以及 点云
+* AgvData 中新增备份 optionalInfo，用于可选信息的显示
+* 新增 OptionalInfoWidget 组件，当前添加至 车辆信息的右侧
+* 新增 IoWidget 组件，用于显示 24 个 Input 信号和 24 个 Output 信号
+
 ## 20260122 V1.1.4
 
 * 系统配置新增了 vehicleType 和 configFolder 两个参数

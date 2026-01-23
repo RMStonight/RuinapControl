@@ -18,7 +18,10 @@ public:
     ~MonitorWidget();
 
     // 载入本地地图文件
-    void loadLocalMap(const QString &imagePath, double resolution, double originX, double originY);
+    void loadLocalMap(const QString &imagePath, double originX, double originY);
+
+    // 强制视角居中到 AGV
+    void centerOnAgv();
 
 protected:
     void paintEvent(QPaintEvent *event) override;
@@ -26,9 +29,12 @@ protected:
     void mousePressEvent(QMouseEvent *event) override; // 拖拽平移
     void mouseMoveEvent(QMouseEvent *event) override;
     bool event(QEvent *event) override;
+    void showEvent(QShowEvent *event) override;
 
 private slots:
     void updateScan(const QVector<QPointF> &points);
+    void handleMapName(const QString mapName);
+    void updateAgvState(const QVector<int> &agvState);
 
 private:
     void handleTouchEvent(QTouchEvent *event);
@@ -43,6 +49,11 @@ private:
     double m_mapOriginY = 0;
     double m_mapResolution = 0.05;
     bool m_hasMap = false;
+    QString mapUrl;
+    QString m_mapName = "2.png";
+    int m_agvX = 0;         // mm
+    int m_agvY = 0;         // mm
+    int m_agvAngle = 0;     // 除以 1000 后是弧度
 
     QVector<QPointF> m_scanPoints;
     // 增加成员变量缓存“线”

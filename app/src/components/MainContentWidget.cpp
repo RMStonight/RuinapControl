@@ -54,19 +54,7 @@ void MainContentWidget::initLayout()
     // ==========================================
     // Tab 2: 手动控制
     // ==========================================
-    QWidget *manualTab = new QWidget();
-    QVBoxLayout *manualLayout = new QVBoxLayout(manualTab);
-    manualLayout->setContentsMargins(0, 20, 0, 0); // 去除左右下边距，上边距留一点
-
-    // 添加中间的内容 (模拟 placeholder)
-    QLabel *manualLabel = new QLabel("当前页面：手动控制", manualTab);
-    manualLabel->setStyleSheet("font-size: 20px; color: #888888; font-weight: bold;");
-    manualLabel->setAlignment(Qt::AlignCenter);
-
-    manualLayout->addWidget(manualLabel);
-    manualLayout->addStretch(); // 关键：将底部栏顶到底部
-
-    m_tabWidget->addTab(manualTab, "手动控制");
+    m_tabWidget->addTab(createPlaceholderTab("手动控制"), "手动控制");
 
     // ==========================================
     // Tab 3: 实时监控
@@ -75,19 +63,23 @@ void MainContentWidget::initLayout()
     m_tabWidget->addTab(m_monitorTab, "实时监控");
 
     // ==========================================
-    // Tab 4 - 8: 其他功能页 (批量创建)
+    // Tab 4: 任务管理
     // ==========================================
-    // 定义剩下的8个标签名
-    QStringList tabNames = {
-        "任务管理", "详细状态",
-        "可选信息", "日志记录", "用户权限"};
+    m_tabWidget->addTab(createPlaceholderTab("任务管理"), "任务管理");
 
-    for (const QString &name : tabNames)
-    {
-        // 调用辅助函数创建页面
-        m_tabWidget->addTab(createPlaceholderTab(name), name);
-    }
+    // ==========================================
+    // Tab 5: IO信号
+    // ==========================================
+    m_ioTab = new IoWidget(this);
+    m_tabWidget->addTab(m_ioTab, "IO信号");
 
+    // ==========================================
+    // Tab 6 - 8: 其他功能页
+    // ==========================================
+
+    m_tabWidget->addTab(createPlaceholderTab("调试专用"), "调试专用");
+    m_tabWidget->addTab(createPlaceholderTab("日志记录"), "日志记录");
+    m_tabWidget->addTab(createPlaceholderTab("用户权限"), "用户权限");
     // ==========================================
     // Tab 9: 系统设置页面
     // ==========================================
@@ -125,11 +117,14 @@ void MainContentWidget::onTabChanged(int index)
 
     // 定义哪些页面需要显示底部栏
     // 你也可以用 index 判断，但用标题更直观，或者维护一个 index 列表
-    bool needBottomBar = (currentTitle == "车辆信息" || currentTitle == "手动控制");
+    bool needBottomBar = (currentTitle == "车辆信息" || currentTitle == "手动控制" || currentTitle == "任务管理" || currentTitle == "IO信号" || currentTitle == "调试专用");
 
-    if (needBottomBar) {
+    if (needBottomBar)
+    {
         m_bottomBar->show();
-    } else {
+    }
+    else
+    {
         m_bottomBar->hide();
     }
 }
@@ -137,7 +132,8 @@ void MainContentWidget::onTabChanged(int index)
 // 更新数据的统一接口
 void MainContentWidget::updateBottomBarData(const QString &key, const QString &value)
 {
-    if (m_bottomBar) {
+    if (m_bottomBar)
+    {
         m_bottomBar->updateValue(key, value);
     }
 }
