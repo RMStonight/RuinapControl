@@ -4,7 +4,7 @@
 #include <QDebug>
 #include "utils/AgvData.h"
 
-IoWidget::IoWidget(QWidget *parent) : QWidget(parent)
+IoWidget::IoWidget(QWidget *parent) : BaseDisplayWidget(parent)
 {
     initUi();
 
@@ -25,60 +25,49 @@ IoWidget::~IoWidget()
 
 void IoWidget::initUi()
 {
-    // 主布局
-    QVBoxLayout *mainLayout = new QVBoxLayout(this);
-    mainLayout->setContentsMargins(20, 20, 20, 20);
+    // 我们创建一个透明的容器来装所有的灯，方便整体位移
+    m_scrollContainer = new QWidget(this);
 
-    // 标题 (可选，根据图2风格)
-    mainLayout->addSpacing(20);
-
-    // 网格布局用于放置圆圈
+    QVBoxLayout *containerLayout = new QVBoxLayout(m_scrollContainer);
     QGridLayout *gridLayout = new QGridLayout();
-    gridLayout->setSpacing(15); // 灯之间的间距
+    gridLayout->setSpacing(15);
 
-    // --- X 信号 (输入) ---
-    // 24个信号，每行8个 -> 占用行 0, 1, 2
+    // --- X 信号 & Y 信号 生成逻辑保持不变 ---
     for (int i = 0; i < 24; ++i)
     {
-        QString text = QString("X%1").arg(i + 1);
-        QLabel *lamp = createLamp(text);
+        QLabel *lamp = createLamp(QString("X%1").arg(i + 1));
         m_xLamps.append(lamp);
-
-        int row = i / 8; // 0-7是第0行, 8-15是第1行...
-        int col = i % 8; // 0-7 列
-        gridLayout->addWidget(lamp, row, col);
+        gridLayout->addWidget(lamp, i / 8, i % 8);
     }
 
-    // --- 添加一个分割线或间距 ---
-    // 在 X 和 Y 之间增加一行空白，防止视觉混淆
-    // QSpacerItem(宽, 高)
     QSpacerItem *verticalSpacer = new QSpacerItem(20, 60, QSizePolicy::Minimum, QSizePolicy::Fixed);
-    // 将间隔项添加到第3行 (X占用了0-2)
     gridLayout->addItem(verticalSpacer, 3, 0);
 
-    // --- Y 信号 (输出) ---
-    // 同样每行8个 -> 从第 4 行开始 (0,1,2是X, 3是空行)
-    int yStartRow = 4;
     for (int i = 0; i < 24; ++i)
     {
-        QString text = QString("Y%1").arg(i + 1);
-        QLabel *lamp = createLamp(text);
+        QLabel *lamp = createLamp(QString("Y%1").arg(i + 1));
         m_yLamps.append(lamp);
-
-        int row = yStartRow + (i / 8);
-        int col = i % 8;
-        gridLayout->addWidget(lamp, row, col);
+        gridLayout->addWidget(lamp, 4 + (i / 8), i % 8);
     }
 
-    // 将网格居中放置
-    // 左右增加弹簧，让网格在水平方向居中
-    QHBoxLayout *hBox = new QHBoxLayout();
-    hBox->addStretch();
-    hBox->addLayout(gridLayout);
-    hBox->addStretch();
+    containerLayout->addLayout(gridLayout);
+    m_scrollContainer->adjustSize(); // 根据灯的数量自适应大小
+}
 
-    mainLayout->addLayout(hBox);
-    mainLayout->addStretch(); // 底部弹簧，顶起内容
+// 重写绘图或布局逻辑以确保 IO 面板在 3/4 区域内居中
+void IoWidget::resizeEvent(QResizeEvent *event)
+{
+    BaseDisplayWidget::resizeEvent(event); // 先执行基类侧边栏布局
+
+    if (m_scrollContainer) {
+        int leftWidth = getDrawingWidth(); // 获取左侧 3/4 宽度
+        int centerX = leftWidth / 2;
+        int centerY = height() / 2;
+
+        // 将 IO 面板移动到左侧区域的中心
+        m_scrollContainer->move(centerX - m_scrollContainer->width() / 2, 
+                                centerY - m_scrollContainer->height() / 2);
+    }
 }
 
 QLabel *IoWidget::createLamp(const QString &text)

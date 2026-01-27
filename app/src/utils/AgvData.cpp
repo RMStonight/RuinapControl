@@ -93,7 +93,6 @@ void AgvData::initData()
     // OptionalINFO
     m_optionalInfo = QJsonObject();
     m_liftHeight = AgvInt(0, "#000000");
-    m_optionalErr = AgvString("NULL", "#000000");
     // AGV_TASK
     m_taskState = AgvInt(0, "#000000");
     m_taskId = AgvString("NULL", "#000000");
@@ -279,10 +278,6 @@ void AgvData::initParsers()
     m_optionalInfoParsers["lift_height"] = [this](const QJsonObject &data)
     {
         m_liftHeight = parseAttr<int>(data, "lift_height");
-    };
-    m_optionalInfoParsers["Optional_Err_Msg"] = [this](const QJsonObject &data)
-    {
-        m_optionalErr = parseAttr<QString>(data, "Optional_Err_Msg");
     };
     // AGV_TASK
     m_agvTaskParsers["task_state"] = [this](const QJsonObject &data)
@@ -566,11 +561,6 @@ AgvInt AgvData::liftHeight() const
 {
     QReadLocker lockeer(&m_lock);
     return m_liftHeight;
-}
-AgvString AgvData::optionalErr() const
-{
-    QReadLocker lockeer(&m_lock);
-    return m_optionalErr;
 }
 // AGV_TASK
 AgvInt AgvData::taskState() const

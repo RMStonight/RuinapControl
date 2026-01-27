@@ -21,6 +21,9 @@ public:
     // 保存配置
     void saveSettings();
 
+protected:
+    void showEvent(QShowEvent *event) override;
+
 private:
     void initUI();
 

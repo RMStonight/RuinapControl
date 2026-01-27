@@ -70,7 +70,6 @@ public:
     // OptionalINFO
     QJsonObject optionalInfo() const;
     AgvInt liftHeight() const;
-    AgvString optionalErr() const;
     // AGV_TASK
     AgvInt taskState() const;
     AgvString taskId() const;
@@ -164,7 +163,6 @@ private:
     AgvInt m_runTime;                       // 开机运行事件，单位 s
     // OptionalINFO
     AgvInt m_liftHeight;                    // 举升高度，单位 mm
-    AgvString m_optionalErr;                // 可选错误信息，Null 代表无错误
     // AGV_TASK
     AgvInt m_taskState;                     // AGV 自动模式下的当前任务状态，0 车上无任务，1 车上有任务，2 任务已完成，3 任务取消
     AgvString m_taskId;                     // AGV 自动模式下的当前任务号，若当前无任务则为 null

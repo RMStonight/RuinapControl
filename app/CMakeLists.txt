@@ -45,6 +45,7 @@ set(SOURCES
     include/components/BottomInfoBar.h
     include/components/OptionalInfoWidget.h
     include/components/IoWidget.h
+    include/components/BaseDisplayWidget.h
 
     resources/app.qrc
 )

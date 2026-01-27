@@ -1,70 +1,73 @@
 #ifndef MONITORWIDGET_H
 #define MONITORWIDGET_H
 
-#include <QWidget>
+#include "BaseDisplayWidget.h" // 1. 包含基类
 #include <QImage>
 #include <QVector>
 #include <QPointF>
 #include <QTouchEvent>
 #include <QThread>
+#include <QLabel>
 
 class RosBridgeClient;
 
-class MonitorWidget : public QWidget
+class MonitorWidget : public BaseDisplayWidget // 2. 继承基类
 {
     Q_OBJECT
 public:
     explicit MonitorWidget(QWidget *parent = nullptr);
     ~MonitorWidget();
 
-    // 载入本地地图文件
     void loadLocalMap(const QString &imagePath, double originX, double originY);
-
-    // 强制视角居中到 AGV
-    void centerOnAgv();
+    void centerOnAgv(); 
+    void setMapId(int id);
+    // setSharedOptionalInfo 已由基类实现
 
 protected:
     void paintEvent(QPaintEvent *event) override;
-    void wheelEvent(QWheelEvent *event) override;      // 缩放
-    void mousePressEvent(QMouseEvent *event) override; // 拖拽平移
+    void wheelEvent(QWheelEvent *event) override;      
+    void mousePressEvent(QMouseEvent *event) override; 
     void mouseMoveEvent(QMouseEvent *event) override;
     bool event(QEvent *event) override;
     void showEvent(QShowEvent *event) override;
+    // resizeEvent 已由基类处理
 
 private slots:
     void updateScan(const QVector<QPointF> &points);
-    void handleMapName(const QString mapName);
+    void handleMapName(int mapId);
     void updateAgvState(const QVector<int> &agvState);
+
+public slots:
+    void handleMapIdChanged(int mapId);
 
 private:
     void handleTouchEvent(QTouchEvent *event);
+    bool isInDrawingArea(const QPointF &pos); 
 
 private:
     RosBridgeClient *m_rosClient;
     QThread *m_rosThread;
 
-    // 数据缓存
+    // OptionalInfoWidget *m_currentSideBar; // 已移动到基类
+    
+    QLabel *m_mapIdLabel;
     QPixmap m_mapPixmap;
     double m_mapOriginX = 0;
     double m_mapOriginY = 0;
     double m_mapResolution = 0.05;
     bool m_hasMap = false;
     QString mapUrl;
-    QString m_mapName = "2.png";
-    int m_agvX = 0;         // mm
-    int m_agvY = 0;         // mm
-    int m_agvAngle = 0;     // 除以 1000 后是弧度
+    QString m_mapName = "";
+    int m_agvX = 0;
+    int m_agvY = 0;
+    int m_agvAngle = 0;
 
     QVector<QPointF> m_scanPoints;
-    // 增加成员变量缓存“线”
     QVector<QLineF> m_scanLines;
 
-    // 视图变换参数 (缩放、平移)
-    double m_scale = 50.0;                // 初始缩放：1米 = 20像素
-    QPointF m_offset = QPointF(400, 300); // 视图中心偏移
+    double m_scale = 50.0;
+    QPointF m_offset = QPointF(400, 300);
     QPointF m_lastMousePos;
-
-    // 用于触摸逻辑的标志位，防止触摸和鼠标事件冲突
     bool m_touchActive = false;
 };
 

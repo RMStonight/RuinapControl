@@ -1,6 +1,5 @@
 #include "OptionalInfoWidget.h"
 #include "AgvData.h"
-
 #include <QJsonValue>
 #include <QJsonObject>
 #include <QJsonDocument>

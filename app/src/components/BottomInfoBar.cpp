@@ -13,7 +13,7 @@ struct ItemConfig
 
 BottomInfoBar::BottomInfoBar(QWidget *parent) : QWidget(parent)
 {
-    this->setFixedHeight(120);
+    this->setFixedHeight(100);
     this->setAttribute(Qt::WA_StyledBackground, true);
     this->setStyleSheet(R"(
         BottomInfoBar {
@@ -83,7 +83,7 @@ void BottomInfoBar::initLayout()
         {"方向D", 1},
         {"任务动作", 1},
         {"当前点位", 1},
-        {"可选错误", 2},
+        {"地图编号", 1},
 
         {"车体错误", 4},
         {"任务错误", 4}};
@@ -171,7 +171,7 @@ void BottomInfoBar::updateValue(const QString &key, const QString &value)
                 lbl->setStyleSheet(lblValueStyleGreen);
             }
         }
-        else if (key.contains("车体错误") || key.contains("可选错误") || key.contains("任务错误"))
+        else if (key.contains("车体错误") || key.contains("任务错误"))
         {
             if (value == "" || value.isNull())
             {
@@ -219,6 +219,7 @@ void BottomInfoBar::updateUi()
     updateData.insert("路径终X", QString::number(agvData->pathEndX().value));
     updateData.insert("路径终Y", QString::number(agvData->pathEndY().value));
     updateData.insert("当前点位", QString::number(agvData->pointId().value));
+    updateData.insert("地图编号", QString::number(agvData->mapId().value));
     updateData.insert("载货状态", handleGoodsState(agvData->goodsState().value));
     updateData.insert("时长T", QString::number(agvData->runTime().value));
     updateData.insert("里程O", QString::number(agvData->runLength().value));
@@ -233,10 +234,18 @@ void BottomInfoBar::updateUi()
     updateData.insert("坐标Y", QString::number(agvData->slamY().value));
     updateData.insert("角度A", QString::number(agvData->slamAngle().value / 100.0, 'f', 2));
     updateData.insert("协方差", QString::number(agvData->slamCov().value / 1000.0, 'f', 3));
-    updateData.insert("可选错误", agvData->optionalErr().value);
     updateData.insert("任务错误", agvData->taskErr().value);
     updateData.insert("任务消息", agvData->taskDescription().value);
     updateData.insert("车体错误", agvData->agvErr().value);
+
+    // 特殊处理的变量
+    // mapId
+    if (agvData->mapId().value != m_mapId)
+    {
+        m_mapId = agvData->mapId().value;
+        emit mapIdChanged(m_mapId);
+    }
+
     updateAllValues(updateData);
 }
 

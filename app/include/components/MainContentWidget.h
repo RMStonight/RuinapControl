@@ -34,6 +34,7 @@ private:
     // 辅助函数：快速创建一个带有简单文字的空白页，用于填充 Tab
     QWidget *createPlaceholderTab(const QString &text);
 
+    OptionalInfoWidget *m_sharedOptionalInfo; // 唯一的右侧栏实例
     QTabWidget *m_tabWidget; // Tab 容器
     QPushButton *m_testBtn;  // 保留原来的按钮
 

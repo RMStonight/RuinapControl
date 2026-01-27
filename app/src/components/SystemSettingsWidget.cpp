@@ -24,6 +24,13 @@ SystemSettingsWidget::SystemSettingsWidget(QWidget *parent) : QWidget(parent)
     loadSettings(); // 构造时自动加载已有配置
 }
 
+// 页面载入时触发
+void SystemSettingsWidget::showEvent(QShowEvent *event)
+{
+    QWidget::showEvent(event);
+    loadSettings(); // 进入页面时重新载入一次配置
+}
+
 void SystemSettingsWidget::initUI()
 {
     // 从 QSS 文件加载

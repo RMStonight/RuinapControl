@@ -1,5 +1,13 @@
 # This is a README
 
+## 20260127 V1.1.6
+
+* 不再处理 OptionalInfoErr，不存在该字段
+* 切换至 SystemSettingsWidget 时加载一次配置文件
+* 不再通过 ros 订阅 topic 的 map_name 来切换地图，而是使用 AGV_STATE 中的 map_id 字段
+* 提取出 BaseDisplayWidget 基类，实现统一的左右布局，左侧 3/4 为页面主内容，右侧 1/4 为 OptionalInfoWidget
+* 将 VehicleInfoWidget、MonitorWidget、IoWidget 页面全部修改为使用 BaseDisplayWidget 基类
+
 ## 20260123 V1.1.5
 
 * 系统配置新增 mapResolution 参数

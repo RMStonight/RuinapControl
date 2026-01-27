@@ -6,7 +6,7 @@
 #include <QMap>
 #include <QTimer>
 #include <QHBoxLayout>
-#include "OptionalInfoWidget.h"
+#include "BaseDisplayWidget.h"
 
 // 车体模型的命名方式
 #define MODEL_PNG "model.png"
@@ -30,7 +30,7 @@ enum class SensorZone
     BottomRight // 右后
 };
 
-class VehicleInfoWidget : public QWidget
+class VehicleInfoWidget : public BaseDisplayWidget
 {
     Q_OBJECT
 public:
@@ -50,24 +50,19 @@ private slots:
     void updateUi();
 
 private:
-    OptionalInfoWidget *m_optionalInfo; // 右侧滚动栏区域
+    // 车辆类型
     QPixmap m_agvImage; // 资源图片
+    int vehicleType;    // 1 双叉叉车，2 四叉叉车
+
+    // 状态数据
+    int m_cargoState; // 0 无货，1 左货，2 右货，3 双货
+    bool m_bumperTop, m_bumperBottom, m_bumperLeft, m_bumperRight;
+    QMap<SensorZone, SensorState> m_radarStates;
 
     // 颜色
     QColor lightGreen = QColor(148, 222, 188);
     QColor lightYellow = QColor(255, 255, 172);
     QColor lightRed = QColor(241, 168, 159);
-
-    // 车辆类型
-    int vehicleType; // 1 双叉叉车，2 四叉叉车
-
-    // 状态数据
-    int m_cargoState; // 0 无货，1 左货，2 右货，3 双货
-    bool m_bumperTop;
-    bool m_bumperBottom;
-    bool m_bumperLeft;
-    bool m_bumperRight;
-    QMap<SensorZone, SensorState> m_radarStates;
 
     // 辅助绘图函数
     QColor getStateColor(SensorState state);

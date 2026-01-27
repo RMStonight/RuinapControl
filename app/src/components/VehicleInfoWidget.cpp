@@ -3,23 +3,9 @@
 #include "utils/AgvData.h"
 #include "utils/ConfigManager.h"
 
-VehicleInfoWidget::VehicleInfoWidget(QWidget *parent) : QWidget(parent)
+VehicleInfoWidget::VehicleInfoWidget(QWidget *parent) : BaseDisplayWidget(parent)
 {
     this->setStyleSheet("background-color: #ffffff");
-
-    // --- 新增：布局初始化 ---
-    QHBoxLayout *mainLayout = new QHBoxLayout(this);
-    mainLayout->setContentsMargins(0, 0, 0, 0); // 无边距，铺满
-    mainLayout->setSpacing(0);
-    // 1. 左侧占位 (权重 2)
-    // 我们不放置实体 Widget，而是放置一个弹簧。
-    // 因为 paintEvent 是绘制在父窗口(this)上的，左侧留空即可显示绘制内容。
-    mainLayout->addStretch(2);
-    // 2. 右侧容器 (权重 1，即左右各占 50%)
-    m_optionalInfo = new OptionalInfoWidget(this);
-    m_optionalInfo->setObjectName("RightModuleContainer");
-    mainLayout->addWidget(m_optionalInfo, 1);
-    // ----------------------
 
     // 系统配置
     ConfigManager *cfg = ConfigManager::instance();
@@ -103,21 +89,8 @@ void VehicleInfoWidget::paintEvent(QPaintEvent *event)
     QPainter painter(this);
     painter.setRenderHint(QPainter::Antialiasing);
 
-    // ==========================================
-    // [核心修改]：动态获取左侧区域的实际宽度
-    // ==========================================
-
-    // 方法：直接问右侧控件“你在哪？”
-    // m_optionalInfo->x() 就是它左边缘的位置，也就是左侧空白区域的宽度。
-    // 这样做的好处是：以后你改成 3:1 或 4:1，这行代码完全不用动，它自动适应！
-    int leftSectionWidth = m_optionalInfo->x();
-
-    // 如果刚初始化还没排版完（极少情况），或者为了保险，防止为0
-    if (leftSectionWidth <= 0)
-    {
-        leftSectionWidth = width() * 2 / 3; // 降级方案
-    }
-
+    // 利用基类获取绘图区域
+    int leftSectionWidth = getDrawingWidth();
     QRect leftRect(0, 0, leftSectionWidth, height());
 
     // 2. 找到左侧区域的中心点

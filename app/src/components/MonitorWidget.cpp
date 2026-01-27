@@ -8,10 +8,29 @@
 #include <QLineF>
 #include <QtMath>
 
-MonitorWidget::MonitorWidget(QWidget *parent) : QWidget(parent)
+MonitorWidget::MonitorWidget(QWidget *parent) : BaseDisplayWidget(parent)
 {
-    this->setStyleSheet("background-color: #1E1E1E;");
+    this->setStyleSheet("background-color: #ffffff;");
     setAttribute(Qt::WA_AcceptTouchEvents);
+
+    // 初始化左上角 Label ---
+    m_mapIdLabel = new QLabel(this); // 指定 this 为父对象，使其依附于当前窗口
+    m_mapIdLabel->setText("地图编号: -100");
+
+    // 设置样式：白色文字，半透明黑色背景(防止地图太亮看不清文字)，字号加大，圆角
+    m_mapIdLabel->setStyleSheet(
+        "color: white;"
+        "font-size: 16px;"
+        "font-weight: bold;"
+        "background-color: rgba(0, 0, 0, 100);"
+        "padding: 6px;"
+        "border-radius: 4px;");
+
+    // 根据文字内容自动调整大小
+    m_mapIdLabel->adjustSize();
+
+    // 移动到左上角 (x=10, y=10) 留出一点边距
+    m_mapIdLabel->move(10, 10);
 
     ConfigManager *cfg = ConfigManager::instance();
 
@@ -23,7 +42,6 @@ MonitorWidget::MonitorWidget(QWidget *parent) : QWidget(parent)
         mapUrl += "/";
     }
     m_mapResolution = cfg->mapResolution() / 1000.0;
-    loadLocalMap(mapUrl + m_mapName, 0, 0);
 
     // 创建线程
     m_rosThread = new QThread(this);
@@ -36,7 +54,6 @@ MonitorWidget::MonitorWidget(QWidget *parent) : QWidget(parent)
 
     // 连接信号槽 (UI 更新逻辑不变)
     connect(m_rosClient, &RosBridgeClient::scanReceived, this, &MonitorWidget::updateScan);
-    connect(m_rosClient, &RosBridgeClient::mapNameReceived, this, &MonitorWidget::handleMapName);
     connect(m_rosClient, &RosBridgeClient::agvStateReceived, this, &MonitorWidget::updateAgvState);
 
     // 启动连接逻辑
@@ -65,38 +82,56 @@ MonitorWidget::~MonitorWidget()
     }
 }
 
+// 页面载入时触发
 void MonitorWidget::showEvent(QShowEvent *event)
 {
     QWidget::showEvent(event);
     // 每次显示界面时，自动归位到小车
     centerOnAgv();
+
+    // width() 和 height() 返回的是像素值
+    qDebug() << "MonitorWidget ShowEvent - Width:" << this->width()
+             << "Height:" << this->height();
 }
 
+// 强制视角以 AGV 为中心
 void MonitorWidget::centerOnAgv()
 {
-    // 1. 获取控件当前的中心点坐标 (屏幕像素)
-    double centerX = this->width() / 2.0;
+    // 3. 使用基类的 getDrawingWidth() 计算中心
+    int leftSectionWidth = getDrawingWidth();
+
+    double centerX = leftSectionWidth / 2.0;
     double centerY = this->height() / 2.0;
 
-    // 2. 获取 AGV 当前的物理坐标 (米)
-    // 对应 paintEvent 中的逻辑： x_m = m_agvX / 1000.0
-    double agvX_m = m_agvX / 1000.0;
-    double agvY_m = m_agvY / 1000.0;
+    double worldX = m_agvX / 1000.0;
+    double worldY = -(m_agvY / 1000.0);
 
-    // 3. 计算目标“世界坐标”在 Qt 绘图系中的位置
-    // 注意：在 paintEvent 中，Y 轴是取反的 (painter.translate(x_m, -y_m))
-    double worldX = agvX_m;
-    double worldY = -agvY_m;
-
-    // 4. 反向计算 offset
-    // 逻辑：MonitorWidget 的视图变换公式是 ScreenPos = (WorldPos * Scale) + Offset
-    // 因此：Offset = ScreenPos - (WorldPos * Scale)
     double newOffsetX = centerX - (worldX * m_scale);
     double newOffsetY = centerY - (worldY * m_scale);
 
-    // 5. 应用并刷新
     m_offset = QPointF(newOffsetX, newOffsetY);
     update();
+}
+
+// 更新地图编号
+void MonitorWidget::setMapId(int id)
+{
+    if (m_mapIdLabel)
+    {
+        // 使用 arg() 格式化字符串
+        m_mapIdLabel->setText(QString("地图编号: %1").arg(id));
+
+        // [重要] 文字长度改变后，必须重新计算 Label 大小，
+        // 这样半透明背景框才会跟随文字自动伸缩。
+        m_mapIdLabel->adjustSize();
+    }
+}
+
+// 地图编号更新
+void MonitorWidget::handleMapIdChanged(int mapId)
+{
+    setMapId(mapId);
+    handleMapName(mapId);
 }
 
 // 更新 scan
@@ -118,14 +153,15 @@ void MonitorWidget::updateScan(const QVector<QPointF> &points)
 }
 
 // 处理 mapName
-void MonitorWidget::handleMapName(const QString mapName)
+void MonitorWidget::handleMapName(int mapId)
 {
+    QString newMapName = QString::number(mapId) + ".png";
     // 判断是否需要切换地图
-    if (m_mapName != mapName)
+    if (m_mapName != newMapName)
     {
-        loadLocalMap(mapUrl + mapName, 0, 0);
-        qDebug() << "地图切换" << m_mapName << " -> " << mapName << ", 当前地图分辨率: " << m_mapResolution;
-        m_mapName = mapName;
+        loadLocalMap(mapUrl + newMapName, 0, 0);
+        qDebug() << "地图切换" << m_mapName << " -> " << newMapName << ", 当前地图分辨率: " << m_mapResolution;
+        m_mapName = newMapName;
     }
 }
 
@@ -172,6 +208,11 @@ void MonitorWidget::paintEvent(QPaintEvent *event)
     Q_UNUSED(event);
     QPainter painter(this);
     painter.setRenderHint(QPainter::Antialiasing, true);
+
+    // 计算当前可用的左侧绘图区域宽度
+    int leftSectionWidth = getDrawingWidth();
+    // 绘制背景（如果地图没占满，保证左侧是黑色）
+    painter.fillRect(0, 0, leftSectionWidth, height(), QColor("#ffffff"));
 
     // --- 1. 视图变换 (View Transform) ---
     // 将原点移动到屏幕中心 + 偏移量
@@ -259,12 +300,24 @@ void MonitorWidget::paintEvent(QPaintEvent *event)
     painter.restore();
 }
 
+// 判定坐标是否在左侧绘图区
+bool MonitorWidget::isInDrawingArea(const QPointF &pos)
+{
+    return pos.x() < getDrawingWidth();
+}
+
 // 鼠标交互：平移
 void MonitorWidget::mousePressEvent(QMouseEvent *event)
 {
-    // 如果正在进行触摸操作，忽略鼠标事件，防止逻辑冲突
     if (m_touchActive)
         return;
+
+    // --- 新增判定：如果点击位置在右侧面板区域，直接忽略 ---
+    if (!isInDrawingArea(event->localPos()))
+    {
+        event->ignore(); // 让事件正常传递给子控件 OptionalInfoWidget
+        return;
+    }
 
     if (event->button() == Qt::LeftButton)
     {
@@ -277,10 +330,13 @@ void MonitorWidget::mouseMoveEvent(QMouseEvent *event)
     if (m_touchActive)
         return;
 
+    // --- 新增判定：仅在绘图区处理移动 ---
+    if (!isInDrawingArea(event->localPos()))
+        return;
+
     if (event->buttons() & Qt::LeftButton)
     {
         QPointF currentPos = event->localPos();
-        // 计算浮点数差值
         QPointF delta = currentPos - m_lastMousePos;
         m_offset += delta;
         m_lastMousePos = currentPos;
@@ -291,6 +347,12 @@ void MonitorWidget::mouseMoveEvent(QMouseEvent *event)
 // 鼠标交互：缩放
 void MonitorWidget::wheelEvent(QWheelEvent *event)
 {
+    // --- 新增判定：如果鼠标悬停在右侧面板上，不触发地图缩放 ---
+    if (!isInDrawingArea(event->position()))
+    {
+        return;
+    }
+
     // --- 获取鼠标在屏幕上的当前位置 ---
     QPointF mousePos;
 
@@ -329,20 +391,33 @@ void MonitorWidget::wheelEvent(QWheelEvent *event)
 // 事件分发入口
 bool MonitorWidget::event(QEvent *event)
 {
-    // 拦截触摸事件
-    switch (event->type())
+    // 拦截触摸事件进行分发判定
+    if (event->type() == QEvent::TouchBegin ||
+        event->type() == QEvent::TouchUpdate ||
+        event->type() == QEvent::TouchEnd ||
+        event->type() == QEvent::TouchCancel)
     {
-    case QEvent::TouchBegin:
-    case QEvent::TouchUpdate:
-    case QEvent::TouchEnd:
-    case QEvent::TouchCancel:
-        // 将通用事件转为触摸事件并处理
-        handleTouchEvent(static_cast<QTouchEvent *>(event));
-        return true; // 告诉 Qt 我们已经处理了这个事件
-    default:
-        // 其他事件（如鼠标、绘图等）交给父类默认处理
-        return QWidget::event(event);
+        QTouchEvent *touchEvent = static_cast<QTouchEvent *>(event);
+        const QList<QTouchEvent::TouchPoint> &points = touchEvent->touchPoints();
+
+        if (!points.isEmpty())
+        {
+            // --- 核心修改：判定触摸起始点 ---
+            // 如果触摸点不在左侧绘图区，我们不处理它，直接交给 QWidget 默认处理
+            // 这样 QWidget 会把触摸事件转换为滚动事件或直接发给 OptionalInfoWidget
+            if (!isInDrawingArea(points.first().pos()))
+            {
+                return QWidget::event(event);
+            }
+        }
+
+        // 如果在绘图区，执行原有的地图交互逻辑
+        handleTouchEvent(touchEvent);
+        return true;
     }
+
+    // 其他事件（如鼠标、绘图等）交给父类默认处理
+    return QWidget::event(event);
 }
 
 // 原来的 touchEvent 改名为 handleTouchEvent，逻辑完全不变
@@ -350,16 +425,22 @@ void MonitorWidget::handleTouchEvent(QTouchEvent *event)
 {
     // 获取触摸点列表
     const QList<QTouchEvent::TouchPoint> &points = event->touchPoints();
+    if (points.isEmpty())
+        return;
 
     // 状态标记
     if (event->type() == QEvent::TouchBegin)
     {
+        if (!isInDrawingArea(points.first().pos()))
+        {
+            m_touchActive = false; // 标记为非绘图区触摸
+            return;
+        }
         m_touchActive = true;
     }
-    else if (event->type() == QEvent::TouchEnd || event->type() == QEvent::TouchCancel)
-    {
-        m_touchActive = false;
-    }
+
+    if (!m_touchActive)
+        return; // 如果不是从绘图区开始的触摸，直接跳过
 
     // --- 单指平移 ---
     if (points.count() == 1)

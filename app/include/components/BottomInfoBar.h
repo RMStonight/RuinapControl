@@ -22,6 +22,9 @@ public:
 private slots:
     void updateUi();
 
+signals:
+    void mapIdChanged(int mapId);
+
 private:
     const QString lblKeyStyle = "color: #666666; font-size: 12px;";
     const QString lblValueStyleGreen = "color: #007055; font-size: 13px;";
@@ -33,6 +36,9 @@ private:
 
     // 存储所有的数值 Label
     QMap<QString, QLabel *> m_valueLabels;
+
+    // 特别记录 mapId
+    int m_mapId;
 
     // 定时器更新 UI
     QTimer *m_updateTimer;
