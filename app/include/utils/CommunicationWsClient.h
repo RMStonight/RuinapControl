@@ -6,7 +6,10 @@
 #include <QJsonObject>
 #include <QJsonDocument>
 #include <QDateTime>
-#include "utils/WebsocketClient.h" // 引用之前的底层客户端
+#include "WebsocketClient.h" // 引用之前的底层客户端
+#include "ManualControlWidget.h"
+#include "utils/ConfigManager.h"
+#include "AgvData.h"
 
 class CommunicationWsClient : public QObject
 {
@@ -29,8 +32,6 @@ signals:
     // 连接状态改变：true=在线，false=离线
     void connectionStatusChanged(bool isConnected);
     void textReceived(const QString &msg);
-
-signals:
     // --- 内部信号 (用于跨线程通讯) ---
     void sigInternalSendText(const QString &msg);
 
@@ -46,13 +47,21 @@ private:
     WebsocketClient *m_client;
     QThread *m_thread;
 
-    QTimer *m_pollTimer;                // 用于持续触发请求
-    const int POLL_INTERVAL_MS = 50;    // 轮询间隔
-    uint64_t dataStamps;                // 数据戳
-    QJsonObject requestState;           // 轮询 AGV_STATE
-    QJsonObject requestTask;            // 轮询 AGV_TASK
+    QTimer *m_pollTimer;             // 用于持续触发请求
+    const int POLL_INTERVAL_MS = 50; // 轮询间隔
+    uint64_t dataStamps;             // 数据戳
 
-    void initalReqJson();               // 初始化请求 json
+    QJsonObject requestState; // 轮询 AGV_STATE
+    QJsonObject requestTask;  // 轮询 AGV_TASK
+    QJsonObject touchState;   // 轮询 TOUCH_STATE
+
+    void initalReqJson(); // 初始化请求 json
+
+    ConfigManager *cfg = ConfigManager::instance(); // cfg
+    AgvData *agvData = AgvData::instance();         // agvData
+
+    // 处理 TOUCH_STATE Body 的赋值
+    QJsonObject getTouchStateBody();
 };
 
 #endif // COMMUNICATIONWSCLIENT_H

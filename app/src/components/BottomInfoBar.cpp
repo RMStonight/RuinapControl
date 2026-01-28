@@ -13,7 +13,7 @@ struct ItemConfig
 
 BottomInfoBar::BottomInfoBar(QWidget *parent) : QWidget(parent)
 {
-    this->setFixedHeight(100);
+    this->setFixedHeight(120);
     this->setAttribute(Qt::WA_StyledBackground, true);
     this->setStyleSheet(R"(
         BottomInfoBar {

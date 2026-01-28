@@ -29,6 +29,7 @@ set(SOURCES
     src/components/BottomInfoBar.cpp
     src/components/OptionalInfoWidget.cpp
     src/components/IoWidget.cpp
+    src/components/ManualControlWidget.cpp
 
     include/utils/ConfigManager.h
     include/utils/RosBridgeClient.h
@@ -46,6 +47,7 @@ set(SOURCES
     include/components/OptionalInfoWidget.h
     include/components/IoWidget.h
     include/components/BaseDisplayWidget.h
+    include/components/ManualControlWidget.h
 
     resources/app.qrc
 )

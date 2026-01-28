@@ -27,15 +27,17 @@ protected:
 private:
     void initUI();
 
-    QLabel* createSectionLabel(const QString &text);
+    QLabel *createSectionLabel(const QString &text);
 
     // --- UI 控件成员变量 ---
     // AGV 参数
     QLineEdit *m_agvIdEdit;
     QLineEdit *m_agvIpEdit;
-    QSpinBox *m_maxSpeedBox;
+    QSpinBox *m_chargingThresholdBox;
     QComboBox *m_vehicleTypeCombo;
     QComboBox *m_mapResolutionCombo;
+    QSpinBox *m_arcVwBox;
+    QSpinBox *m_spinVwBox;
 
     // 文件路径
     QLineEdit *m_resourceFolderEdit;
@@ -49,9 +51,8 @@ private:
     QSpinBox *m_rosBridgePortBox;
     QLineEdit *m_serverIpEdit;
     QSpinBox *m_serverPortBox;
-    
+
     // 系统选项
-    QCheckBox *m_autoConnectCheck;
     QCheckBox *m_debugModeCheck;
     QCheckBox *m_fullScreenCheck;
 

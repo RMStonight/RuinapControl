@@ -32,7 +32,6 @@ ConfigManager::ConfigManager(QObject *parent) : QObject(parent)
     // m_serverIp = "192.168.1.1";
     // m_serverPort = 8080;
     // // 系统选项
-    // m_autoConnect = false;
     // m_debugMode = false;
     // m_fullScreen = false;
 }
@@ -44,9 +43,11 @@ void ConfigManager::load()
     // 车体参数
     m_agvId = settings.value("AGV/ID", "1").toString();
     m_agvIp = settings.value("AGV/IP", "127.0.0.1").toString();
-    m_maxSpeed = settings.value("AGV/MaxSpeed", 100).toInt();
+    m_chargingThreshold = settings.value("AGV/ChargingThreshold", 100).toInt();
     m_vehicleType = settings.value("AGV/VehicleType", 1).toInt();
     m_mapResolution = settings.value("AGV/MapResolution", 20).toInt();
+    m_arcVw = settings.value("AGV/ArcVw", 1000).toInt();
+    m_spinVw = settings.value("AGV/SpinVw", 1000).toInt();
     // 文件夹路径
     m_resourceFolder = settings.value("Folder/resource", "").toString();
     m_mapPngFolder = settings.value("Folder/mapPng", "").toString();
@@ -59,7 +60,6 @@ void ConfigManager::load()
     m_serverIp = settings.value("Network/ServerIP", "192.168.1.1").toString();
     m_serverPort = settings.value("Network/ServerPort", 8080).toInt();
     // 系统选项
-    m_autoConnect = settings.value("System/AutoConnect", false).toBool();
     m_debugMode = settings.value("System/DebugMode", false).toBool();
     m_fullScreen = settings.value("System/FullScreen", false).toBool();
 
@@ -76,9 +76,11 @@ void ConfigManager::save()
     // 车体参数
     settings.setValue("AGV/ID", m_agvId);
     settings.setValue("AGV/IP", m_agvIp);
-    settings.setValue("AGV/MaxSpeed", m_maxSpeed.load());
+    settings.setValue("AGV/ChargingThreshold", m_chargingThreshold.load());
     settings.setValue("AGV/VehicleType", m_vehicleType.load());
     settings.setValue("AGV/MapResolution", m_mapResolution.load());
+    settings.setValue("AGV/ArcVw", m_arcVw.load());
+    settings.setValue("AGV/SpinVw", m_spinVw.load());
     // 文件夹路径
     settings.setValue("Folder/resource", m_resourceFolder);
     settings.setValue("Folder/mapPng", m_mapPngFolder);
@@ -91,7 +93,6 @@ void ConfigManager::save()
     settings.setValue("Network/ServerIP", m_serverIp);
     settings.setValue("Network/ServerPort", m_serverPort.load());
     // 系统选项
-    settings.setValue("System/AutoConnect", m_autoConnect.load());
     settings.setValue("System/DebugMode", m_debugMode.load());
     settings.setValue("System/FullScreen", m_fullScreen.load());
 
@@ -114,9 +115,9 @@ QString ConfigManager::agvIp() const
     QReadLocker locker(&m_lock);
     return m_agvIp;
 }
-int ConfigManager::maxSpeed() const
+int ConfigManager::chargingThreshold() const
 {
-    return m_maxSpeed.load();
+    return m_chargingThreshold.load();
 }
 int ConfigManager::vehicleType() const
 {
@@ -125,6 +126,14 @@ int ConfigManager::vehicleType() const
 int ConfigManager::mapResolution() const
 {
     return m_mapResolution.load();
+}
+int ConfigManager::arcVw() const
+{
+    return m_arcVw.load();
+}
+int ConfigManager::spinVw() const
+{
+    return m_spinVw.load();
 }
 // 文件夹路径
 QString ConfigManager::resourceFolder() const
@@ -171,10 +180,6 @@ int ConfigManager::serverPort() const
     return m_serverPort.load();
 }
 // 系统选项
-bool ConfigManager::autoConnect() const
-{
-    return m_autoConnect.load();
-}
 bool ConfigManager::debugMode() const
 {
     return m_debugMode.load();
@@ -196,9 +201,9 @@ void ConfigManager::setAgvIp(const QString &ip)
     QWriteLocker locker(&m_lock);
     m_agvIp = ip;
 }
-void ConfigManager::setMaxSpeed(int speed)
+void ConfigManager::setChargingThreshold(int val)
 {
-    m_maxSpeed.store(speed);
+    m_chargingThreshold.store(val);
 }
 void ConfigManager::setVehicleType(int type)
 {
@@ -207,6 +212,14 @@ void ConfigManager::setVehicleType(int type)
 void ConfigManager::setMapResolution(int res)
 {
     m_mapResolution.store(res);
+}
+void ConfigManager::setArcVw(int vw)
+{
+    m_arcVw.store(vw);
+}
+void ConfigManager::setSpinVw(int vw)
+{
+    m_spinVw.store(vw);
 }
 // 文件夹路径
 void ConfigManager::setResourceFolder(const QString &folder)
@@ -253,10 +266,6 @@ void ConfigManager::setServerPort(int port)
     m_serverPort.store(port);
 }
 // 系统选项
-void ConfigManager::setAutoConnect(bool enable)
-{
-    m_autoConnect.store(enable);
-}
 void ConfigManager::setDebugMode(bool enable)
 {
     m_debugMode.store(enable);

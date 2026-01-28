@@ -90,9 +90,11 @@ void AgvData::initData()
     m_taskDescription = AgvString("", "#000000");
     m_runLength = AgvInt(0, "#000000");
     m_runTime = AgvInt(0, "#000000");
+
     // OptionalINFO
     m_optionalInfo = QJsonObject();
     m_liftHeight = AgvInt(0, "#000000");
+
     // AGV_TASK
     m_taskState = AgvInt(0, "#000000");
     m_taskId = AgvString("NULL", "#000000");
@@ -109,6 +111,23 @@ void AgvData::initData()
     m_pathEndX = AgvInt(0, "#000000");
     m_pathEndY = AgvInt(0, "#000000");
     m_taskErr = AgvString("NULL", "#000000");
+
+    // TOUCH_STATE
+    m_pageControl.store(false);
+    m_taskCancel.store(false); // 取消任务, 0未触发, 1触发
+    m_taskStart.store(false);  // 开始任务, 0未触发, 1触发
+    m_taskPause.store(false);  // 暂停任务, 0未触发, 1触发
+    m_taskResume.store(false); // 恢复任务, 0未触发, 1触发
+    m_chargeCmd.store(false);  // 手动充电信号，0不充电，1充电；拨码开关逻辑，自锁
+    m_manualDir.store(0);      // 手动运动方向，0静止，1前进，2后退，3逆自，4顺自，5左前，6右前，7左后，8右后
+    m_manualAct.store(0);      // 手动动作，0无，1上升，2下降，3左箭头，4右箭头
+    m_manualVx.store(100);     // mm/s
+    m_manualVy.store(0);       // mm/s
+    // m_manualVth.store(0);      // 100°
+    m_iniX.store(0);  // 重定位x
+    m_iniY.store(0);  // 重定位y
+    m_iniW.store(0);  // 重定位w
+    m_music.store(0); // 喇叭操作，0无，1切歌，2音量+，3音量-
 }
 
 void AgvData::initParsers()
@@ -274,11 +293,13 @@ void AgvData::initParsers()
     {
         m_runTime = parseAttr<int>(data, "run_time");
     };
+
     // OptionalINFO
     m_optionalInfoParsers["lift_height"] = [this](const QJsonObject &data)
     {
         m_liftHeight = parseAttr<int>(data, "lift_height");
     };
+
     // AGV_TASK
     m_agvTaskParsers["task_state"] = [this](const QJsonObject &data)
     {
@@ -551,6 +572,7 @@ AgvInt AgvData::runTime() const
     QReadLocker lockeer(&m_lock);
     return m_runTime;
 }
+
 // OptionalINFO
 QJsonObject AgvData::optionalInfo() const
 {
@@ -562,6 +584,7 @@ AgvInt AgvData::liftHeight() const
     QReadLocker lockeer(&m_lock);
     return m_liftHeight;
 }
+
 // AGV_TASK
 AgvInt AgvData::taskState() const
 {
@@ -637,6 +660,131 @@ AgvString AgvData::taskErr() const
 {
     QReadLocker lockeer(&m_lock);
     return m_taskErr;
+}
+
+// TOUCH_STATE
+bool AgvData::pageControl() const
+{
+    return m_pageControl.load();
+}
+bool AgvData::taskCancel() const
+{
+    return m_taskCancel.load();
+}
+bool AgvData::taskStart() const
+{
+    return m_taskStart.load();
+}
+bool AgvData::taskPause() const
+{
+    return m_taskPause.load();
+}
+bool AgvData::taskResume() const
+{
+    return m_taskResume.load();
+}
+bool AgvData::chargeCmd() const
+{
+    return m_chargeCmd.load();
+}
+int AgvData::manualDir() const
+{
+    return m_manualDir.load();
+}
+int AgvData::manualAct() const
+{
+    return m_manualAct.load();
+}
+int AgvData::manualVx() const
+{
+    return m_manualVx.load();
+}
+int AgvData::manualVy() const
+{
+    return m_manualVy.load();
+}
+// int AgvData::manualVth() const
+// {
+//     return m_manualVth.load();
+// }
+int AgvData::iniX() const
+{
+    return m_iniX.load();
+}
+int AgvData::iniY() const
+{
+    return m_iniY.load();
+}
+int AgvData::iniW() const
+{
+    return m_iniW.load();
+}
+int AgvData::music() const
+{
+    return m_music.load();
+}
+
+// ----Setter----
+// TOUCH_STATE
+void AgvData::setPageControl(bool value)
+{
+    m_pageControl.store(value);
+}
+void AgvData::setTaskCancel(bool value)
+{
+    m_taskCancel.store(value);
+}
+void AgvData::setTaskStart(bool value)
+{
+    m_taskStart.store(value);
+}
+void AgvData::setTaskPause(bool value)
+{
+    m_taskPause.store(value);
+}
+void AgvData::setTaskResume(bool value)
+{
+    m_taskResume.store(value);
+}
+void AgvData::setChargeCmd(bool value)
+{
+    m_chargeCmd.store(value);
+}
+void AgvData::setManualDir(int value)
+{
+    m_manualDir.store(value);
+}
+void AgvData::setManualAct(int value)
+{
+    m_manualAct.store(value);
+}
+void AgvData::setManualVx(int value)
+{
+    m_manualVx.store(value);
+}
+void AgvData::setManualVy(int value)
+{
+    m_manualVy.store(value);
+}
+// void AgvData::setManualVth(int value)
+// {
+//     m_manualVth.store(value);
+// }
+void AgvData::setIniX(int value)
+{
+    m_iniX.store(value);
+}
+void AgvData::setIniY(int value)
+{
+    m_iniY.store(value);
+}
+void AgvData::setIniW(int value)
+{
+    m_iniW.store(value);
+}
+void AgvData::setMusic(int value)
+{
+    m_music.store(value);
 }
 
 // 解析 JSON 结构

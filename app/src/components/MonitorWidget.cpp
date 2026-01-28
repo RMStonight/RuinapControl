@@ -90,8 +90,8 @@ void MonitorWidget::showEvent(QShowEvent *event)
     centerOnAgv();
 
     // width() 和 height() 返回的是像素值
-    qDebug() << "MonitorWidget ShowEvent - Width:" << this->width()
-             << "Height:" << this->height();
+    // qDebug() << "MonitorWidget ShowEvent - Width:" << this->width()
+    //          << "Height:" << this->height();
 }
 
 // 强制视角以 AGV 为中心

@@ -23,7 +23,9 @@ public:
     // 车体参数
     QString agvId() const;
     QString agvIp() const;
-    int maxSpeed() const;
+    int chargingThreshold() const;
+    int arcVw() const;
+    int spinVw() const;
     int vehicleType() const;
     int mapResolution() const;
     // 文件夹路径
@@ -38,7 +40,6 @@ public:
     QString serverIp() const;
     int serverPort() const;
     // 系统运行
-    bool autoConnect() const;
     bool debugMode() const;
     bool fullScreen() const;
 
@@ -46,7 +47,9 @@ public:
     // 车体参数
     void setAgvId(const QString &id);
     void setAgvIp(const QString &ip);
-    void setMaxSpeed(int speed);
+    void setChargingThreshold(int val);
+    void setArcVw(int vw);
+    void setSpinVw(int vw);
     void setVehicleType(int type);
     void setMapResolution(int res);
     // 文件夹路径
@@ -61,7 +64,6 @@ public:
     void setServerIp(const QString &ip);
     void setServerPort(int port);
     // 系统运行
-    void setAutoConnect(bool enable);
     void setDebugMode(bool enable);
     void setFullScreen(bool enable);
 
@@ -76,9 +78,11 @@ private:
     // 车体参数
     QString m_agvId;
     QString m_agvIp;
-    std::atomic<int> m_maxSpeed;
-    std::atomic<int> m_vehicleType;     // 1 = 双叉叉车，2 = 四叉叉车
-    std::atomic<int> m_mapResolution;   // 20, 50, 100，地图分辨率，0.02， 0.05， 0.1
+    std::atomic<int> m_chargingThreshold; // 充电自动取消的阈值
+    std::atomic<int> m_arcVw;             // 弧线速度
+    std::atomic<int> m_spinVw;            // 原地自旋速度
+    std::atomic<int> m_vehicleType;       // 1 = 双叉叉车，2 = 四叉叉车
+    std::atomic<int> m_mapResolution;     // 20, 50, 100，地图分辨率，0.02， 0.05， 0.1
     // 文件夹路径
     QString m_resourceFolder;
     QString m_mapPngFolder;
@@ -91,10 +95,9 @@ private:
     QString m_serverIp;
     std::atomic<int> m_serverPort;
     // 系统运行
-    std::atomic<bool> m_autoConnect;
     std::atomic<bool> m_debugMode;
     std::atomic<bool> m_fullScreen;
-    
+
     // mutable 允许在 const 函数中加锁
     mutable QReadWriteLock m_lock;
 };

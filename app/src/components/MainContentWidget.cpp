@@ -57,14 +57,14 @@ void MainContentWidget::initLayout()
     // ==========================================
     // Tab 2: 手动控制
     // ==========================================
-    m_tabWidget->addTab(createPlaceholderTab("手动控制"), "手动控制");
+    m_manualControlTab = new ManualControlWidget(this);
+    m_tabWidget->addTab(m_manualControlTab, "手动控制");
 
     // ==========================================
     // Tab 3: 实时监控
     // ==========================================
     m_monitorTab = new MonitorWidget(this);
     m_tabWidget->addTab(m_monitorTab, "实时监控");
-    m_monitorTab->setSharedOptionalInfo(m_sharedOptionalInfo);
 
     // ==========================================
     // Tab 4: 任务管理
@@ -76,7 +76,6 @@ void MainContentWidget::initLayout()
     // ==========================================
     m_ioTab = new IoWidget(this);
     m_tabWidget->addTab(m_ioTab, "IO信号");
-    m_ioTab->setSharedOptionalInfo(m_sharedOptionalInfo);
 
     // ==========================================
     // Tab 6 - 8: 其他功能页
@@ -129,7 +128,7 @@ void MainContentWidget::onTabChanged(int index)
     m_bottomBar->setVisible(!noBottomBar);
 
     // 侧边栏逻辑简化
-    bool hasSideBar = (currentTitle == "车辆信息" || currentTitle == "实时监控" || currentTitle == "IO信号");
+    bool hasSideBar = (currentTitle == "车辆信息" || currentTitle == "手动控制" || currentTitle == "实时监控" || currentTitle == "IO信号");
     if (m_sharedOptionalInfo)
     {
         m_sharedOptionalInfo->setVisible(hasSideBar);

@@ -1,5 +1,4 @@
 #include "CommunicationWsClient.h"
-#include "utils/ConfigManager.h"
 #include <QDebug>
 
 CommunicationWsClient::CommunicationWsClient(QObject *parent)
@@ -15,7 +14,6 @@ CommunicationWsClient::CommunicationWsClient(QObject *parent)
     m_pollTimer = new QTimer(this);
     m_pollTimer->setInterval(POLL_INTERVAL_MS);
     connect(m_pollTimer, &QTimer::timeout, this, &CommunicationWsClient::sendAgvStateRequest);
-
 }
 
 CommunicationWsClient::~CommunicationWsClient()
@@ -23,7 +21,8 @@ CommunicationWsClient::~CommunicationWsClient()
     stop();
 }
 
-void CommunicationWsClient::initalReqJson() {
+void CommunicationWsClient::initalReqJson()
+{
     // 当前时间戳
     QDateTime cur_time = QDateTime::currentDateTime();
     QString timeStr = cur_time.toString("yyyy-MM-dd hh:mm:ss.zzz");
@@ -41,6 +40,13 @@ void CommunicationWsClient::initalReqJson() {
     requestTask["Event"] = "REQUEST_AGV_TASK";
     requestTask["Body"] = "";
     requestTask["ErrorMessage"] = "";
+
+    touchState["IsSucceed"] = true;
+    touchState["DateTime"] = timeStr;
+    touchState["DataStamps"] = static_cast<int>(dataStamps);
+    touchState["Event"] = "TOUCH_STATE";
+    touchState["Body"] = "";
+    touchState["ErrorMessage"] = "";
 }
 
 void CommunicationWsClient::start()
@@ -58,8 +64,8 @@ void CommunicationWsClient::start()
     m_client->moveToThread(m_thread);
 
     // 3. 读取配置
-    QString ip = ConfigManager::instance()->commIp();
-    int port = ConfigManager::instance()->commPort();
+    QString ip = cfg->commIp();
+    int port = cfg->commPort();
     QString url = QStringLiteral("ws://%1:%2").arg(ip).arg(port);
 
     // 4. 绑定信号槽
@@ -85,7 +91,8 @@ void CommunicationWsClient::start()
 void CommunicationWsClient::stop()
 {
     // 停止时必须关闭定时器，防止向已销毁的线程发送信号
-    if (m_pollTimer->isActive()) m_pollTimer->stop();
+    if (m_pollTimer->isActive())
+        m_pollTimer->stop();
 
     if (m_thread && m_thread->isRunning())
     {
@@ -112,7 +119,6 @@ void CommunicationWsClient::sendAgvStateRequest()
     QJsonDocument docReqState(requestState);
     QString jsonReqStateStr = docReqState.toJson(QJsonDocument::Compact);
 
-    // 发射信号，Qt 自动处理跨线程传输
     emit sigInternalSendText(jsonReqStateStr);
     // qDebug() << "CommunicationWsClient: 发送指令 ->" << jsonReqStateStr;
 
@@ -123,11 +129,67 @@ void CommunicationWsClient::sendAgvStateRequest()
     QJsonDocument docReqTask(requestTask);
     QString jsonReqTaskStr = docReqTask.toJson(QJsonDocument::Compact);
 
-    // 发射信号，Qt 自动处理跨线程传输
     emit sigInternalSendText(jsonReqTaskStr);
     // qDebug() << "CommunicationWsClient: 发送指令 ->" << jsonReqTaskStr;
 
+    // TOUCH_STATE
+    touchState["DateTime"] = timeStr;
+    touchState["DataStamps"] = static_cast<int>(dataStamps);
+    touchState["Body"] = getTouchStateBody();
+
+    QJsonDocument docTouchState(touchState);
+    QString jsonTouchStateStr = docTouchState.toJson(QJsonDocument::Compact);
+
+    emit sigInternalSendText(jsonTouchStateStr);
+    // qDebug() << "CommunicationWsClient: 发送指令 ->" << jsonTouchStateStr;
+
     dataStamps++;
+}
+
+QJsonObject CommunicationWsClient::getTouchStateBody()
+{
+    QJsonObject body;
+
+    body.insert("page_control", agvData->pageControl());
+    body.insert("task_cancel", agvData->taskCancel());
+    body.insert("task_start", agvData->taskStart());
+    body.insert("task_pause", agvData->taskPause());
+    body.insert("task_resume", agvData->taskResume());
+    body.insert("charge_cmd", agvData->chargeCmd());
+    body.insert("manual_dir", agvData->manualDir());
+    body.insert("manual_act", agvData->manualAct());
+    body.insert("manual_vy", agvData->manualVy());
+    body.insert("ini_x", agvData->iniX());
+    body.insert("ini_y", agvData->iniY());
+    body.insert("ini_w", agvData->iniW());
+    body.insert("music", agvData->music());
+    // 根据 manualDir 额外处理 manual_vx 和 manual_vth
+    if (agvData->manualDir() == 1 || agvData->manualDir() == 2)
+    {
+        // 前进、后退
+        body.insert("manual_vx", agvData->manualVx());
+        body.insert("manual_vth", 0);
+    }
+    else if (agvData->manualDir() == 5 || agvData->manualDir() == 6 || agvData->manualDir() == 7 || agvData->manualDir() == 8)
+    {
+        // 左前、右前、左后、右后
+        body.insert("manual_vx", agvData->manualVx());
+        body.insert("manual_vth", cfg->arcVw());
+    }
+    else if (agvData->manualDir() == 3 || agvData->manualDir() == 4)
+    {
+        // 逆自、顺自
+        body.insert("manual_vx", agvData->manualVx());
+        body.insert("manual_vth", cfg->spinVw());
+    }
+    else
+    {
+        // 静止
+        body.insert("manual_vx", 0);
+        body.insert("manual_vth", 0);
+    }
+
+    return body;
 }
 
 // --- 内部槽函数实现 ---
@@ -138,7 +200,8 @@ void CommunicationWsClient::onInternalConnected()
     emit connectionStatusChanged(true);
 
     // 连接成功后，自动启动定时器
-    if (!m_pollTimer->isActive()) {
+    if (!m_pollTimer->isActive())
+    {
         m_pollTimer->start();
     }
 }

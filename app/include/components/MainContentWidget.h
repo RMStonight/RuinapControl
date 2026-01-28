@@ -3,10 +3,11 @@
 
 #include <QWidget>
 #include <QTabBar>
-#include "components/MonitorWidget.h"
-#include "components/BottomInfoBar.h"
-#include "components/VehicleInfoWidget.h"
-#include "components/IoWidget.h"
+#include "MonitorWidget.h"
+#include "BottomInfoBar.h"
+#include "VehicleInfoWidget.h"
+#include "IoWidget.h"
+#include "ManualControlWidget.h"
 
 // 前置声明
 class QTabWidget;
@@ -39,6 +40,7 @@ private:
     QPushButton *m_testBtn;  // 保留原来的按钮
 
     VehicleInfoWidget *m_vehicleInfoTab;    //  vehicleInfo 标签页
+    ManualControlWidget *m_manualControlTab;    //  manualControl 标签页
     MonitorWidget *m_monitorTab;    //  monitor 标签页
     IoWidget *m_ioTab;    //  Io 标签页
 

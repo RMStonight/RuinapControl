@@ -1,5 +1,12 @@
 # This is a README
 
+## 20260128 V1.1.7
+
+* 新增系统参数 充电阈值
+* AgvData 中新增 TOUCH_STATE 的内容
+* 完成 手动控制 标签页的内容
+* CommunicationWsClient 新增发送 TOUCH_STATE
+
 ## 20260127 V1.1.6
 
 * 不再处理 OptionalInfoErr，不存在该字段

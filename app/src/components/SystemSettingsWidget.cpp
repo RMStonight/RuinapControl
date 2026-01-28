@@ -83,10 +83,10 @@ void SystemSettingsWidget::initUI()
     m_agvIpEdit->setPlaceholderText("192.168.1.100");
     m_agvIpEdit->setFixedWidth(200);
 
-    m_maxSpeedBox = new QSpinBox(this);
-    m_maxSpeedBox->setRange(0, 500);   // cm/s
-    m_maxSpeedBox->setSuffix(" cm/s"); // 显示单位
-    m_maxSpeedBox->setFixedWidth(120);
+    m_chargingThresholdBox = new QSpinBox(this);
+    m_chargingThresholdBox->setRange(80, 100);
+    m_chargingThresholdBox->setSuffix(" %"); // 显示单位
+    m_chargingThresholdBox->setFixedWidth(120);
 
     m_vehicleTypeCombo = new QComboBox(this);
     m_vehicleTypeCombo->setFixedWidth(120);
@@ -103,9 +103,21 @@ void SystemSettingsWidget::initUI()
     m_mapResolutionCombo->addItem("0.10", 100);
     m_mapResolutionCombo->setView(new QListView(this));
 
+    m_arcVwBox = new QSpinBox(this);
+    m_arcVwBox->setRange(1000, 3000);
+    m_arcVwBox->setSingleStep(100);
+    m_arcVwBox->setFixedWidth(120);
+
+    m_spinVwBox = new QSpinBox(this);
+    m_spinVwBox->setRange(1000, 3000);
+    m_spinVwBox->setSingleStep(100);
+    m_spinVwBox->setFixedWidth(120);
+
     agvLayout->addRow("AGV 编号:", m_agvIdEdit);
     agvLayout->addRow("AGV IP:", m_agvIpEdit);
-    agvLayout->addRow("最大速度:", m_maxSpeedBox);
+    agvLayout->addRow("充电阈值:", m_chargingThresholdBox);
+    agvLayout->addRow("弧线速度:", m_arcVwBox);
+    agvLayout->addRow("原地自旋速度:", m_spinVwBox);
     agvLayout->addRow("车辆类型:", m_vehicleTypeCombo);
     agvLayout->addRow("地图分辨率:", m_mapResolutionCombo);
 
@@ -191,17 +203,14 @@ void SystemSettingsWidget::initUI()
     // 给 Checkbox 左侧留点空白，对齐上面的输入框
     sysLayout->setContentsMargins(20, 0, 0, 0);
 
-    m_autoConnectCheck = new QCheckBox("启动时自动连接服务器", this);
     m_debugModeCheck = new QCheckBox("开启调试日志 (Debug Log)", this);
     m_fullScreenCheck = new QCheckBox("开启全屏模式 (隐藏标题栏)", this);
     // 稍微加大一点 Checkbox 的字体
     QString checkStyle = "QCheckBox { font-size: 14px; color: #555; }";
-    m_autoConnectCheck->setStyleSheet(checkStyle);
     m_debugModeCheck->setStyleSheet(checkStyle);
     m_fullScreenCheck->setStyleSheet(checkStyle);
 
     // 添加到表单
-    sysLayout->addWidget(m_autoConnectCheck);
     sysLayout->addWidget(m_debugModeCheck);
     sysLayout->addWidget(m_fullScreenCheck);
 
@@ -295,7 +304,7 @@ void SystemSettingsWidget::loadSettings()
     // 车体参数
     m_agvIdEdit->setText(cfg->agvId());
     m_agvIpEdit->setText(cfg->agvIp());
-    m_maxSpeedBox->setValue(cfg->maxSpeed());
+    m_chargingThresholdBox->setValue(cfg->chargingThreshold());
     // 根据存储的 int 值找到对应的下拉框索引
     int vehicleTypeVal = cfg->vehicleType();
     int vehicleTypeIndex = m_vehicleTypeCombo->findData(vehicleTypeVal);
@@ -310,6 +319,8 @@ void SystemSettingsWidget::loadSettings()
     {
         m_mapResolutionCombo->setCurrentIndex(resolutionValIndex);
     }
+    m_arcVwBox->setValue(cfg->arcVw());
+    m_spinVwBox->setValue(cfg->spinVw());
     // 文件夹路径
     m_resourceFolderEdit->setText(cfg->resourceFolder());
     m_mapPngFolderEdit->setText(cfg->mapPngFolder());
@@ -322,7 +333,6 @@ void SystemSettingsWidget::loadSettings()
     m_serverIpEdit->setText(cfg->serverIp());
     m_serverPortBox->setValue(cfg->serverPort());
     // 系统选项
-    m_autoConnectCheck->setChecked(cfg->autoConnect());
     m_debugModeCheck->setChecked(cfg->debugMode());
     m_fullScreenCheck->setChecked(cfg->fullScreen());
 }
@@ -336,9 +346,11 @@ void SystemSettingsWidget::saveSettings()
     // 车体参数
     cfg->setAgvId(m_agvIdEdit->text());
     cfg->setAgvIp(m_agvIpEdit->text());
-    cfg->setMaxSpeed(m_maxSpeedBox->value());
+    cfg->setChargingThreshold(m_chargingThresholdBox->value());
     cfg->setVehicleType(m_vehicleTypeCombo->currentData().toInt());
     cfg->setMapResolution(m_mapResolutionCombo->currentData().toInt());
+    cfg->setArcVw(m_arcVwBox->value());
+    cfg->setSpinVw(m_spinVwBox->value());
     // 文件夹路径
     cfg->setResourceFolder(m_resourceFolderEdit->text());
     cfg->setMapPngFolder(m_mapPngFolderEdit->text());
@@ -351,7 +363,6 @@ void SystemSettingsWidget::saveSettings()
     cfg->setServerIp(m_serverIpEdit->text());
     cfg->setServerPort(m_serverPortBox->value());
     // 系统选项
-    cfg->setAutoConnect(m_autoConnectCheck->isChecked());
     cfg->setDebugMode(m_debugModeCheck->isChecked());
     cfg->setFullScreen(m_fullScreenCheck->isChecked());
 
