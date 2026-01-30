@@ -48,6 +48,11 @@ set(SOURCES
     include/components/IoWidget.h
     include/components/BaseDisplayWidget.h
     include/components/ManualControlWidget.h
+    include/layers/BaseLayer.h
+    include/layers/GridLayer.h
+    include/layers/MapLayer.h
+    include/layers/AgvLayer.h
+    include/layers/PointPathLayer.h
 
     resources/app.qrc
 )

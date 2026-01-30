@@ -2,3 +2,4 @@
 *.zip
 app/build
 app/files/map
+app/files/points_and_path

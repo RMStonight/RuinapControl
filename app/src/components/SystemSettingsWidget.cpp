@@ -140,7 +140,12 @@ void SystemSettingsWidget::initUI()
     m_mapPngFolderEdit = new QLineEdit(this);
     m_mapPngFolderEdit->setPlaceholderText("请填写存放 png 地图的文件夹");
     m_mapPngFolderEdit->setFixedWidth(200);
-    folderLayout->addRow("地图文件夹:", m_mapPngFolderEdit);
+    folderLayout->addRow("地图png文件夹:", m_mapPngFolderEdit);
+
+    m_mapJsonFolderEdit = new QLineEdit(this);
+    m_mapJsonFolderEdit->setPlaceholderText("请填写存放 josn 地图的文件夹");
+    m_mapJsonFolderEdit->setFixedWidth(200);
+    folderLayout->addRow("地图json文件夹:", m_mapJsonFolderEdit);
 
     m_configFolderEdit = new QLineEdit(this);
     m_configFolderEdit->setPlaceholderText("请填写存放配置文件的文件夹");
@@ -324,6 +329,7 @@ void SystemSettingsWidget::loadSettings()
     // 文件夹路径
     m_resourceFolderEdit->setText(cfg->resourceFolder());
     m_mapPngFolderEdit->setText(cfg->mapPngFolder());
+    m_mapJsonFolderEdit->setText(cfg->mapJsonFolder());
     m_configFolderEdit->setText(cfg->configFolder());
     // 网络通讯
     m_commIpEdit->setText(cfg->commIp());
@@ -354,6 +360,7 @@ void SystemSettingsWidget::saveSettings()
     // 文件夹路径
     cfg->setResourceFolder(m_resourceFolderEdit->text());
     cfg->setMapPngFolder(m_mapPngFolderEdit->text());
+    cfg->setMapJsonFolder(m_mapJsonFolderEdit->text());
     cfg->setConfigFolder(m_configFolderEdit->text());
     // 网络通讯
     cfg->setCommIp(m_commIpEdit->text());

@@ -1,12 +1,16 @@
 #include "components/MonitorWidget.h"
 #include "utils/RosBridgeClient.h"
-#include "utils/ConfigManager.h"
+#include "AgvData.h"
 #include <QPainter>
 #include <QWheelEvent>
 #include <QMouseEvent>
 #include <QDebug>
 #include <QLineF>
 #include <QtMath>
+#include <QFile>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QJsonArray>
 
 MonitorWidget::MonitorWidget(QWidget *parent) : BaseDisplayWidget(parent)
 {
@@ -32,54 +36,27 @@ MonitorWidget::MonitorWidget(QWidget *parent) : BaseDisplayWidget(parent)
     // 移动到左上角 (x=10, y=10) 留出一点边距
     m_mapIdLabel->move(10, 10);
 
-    ConfigManager *cfg = ConfigManager::instance();
-
-    // 直接加载本地地图
-    // 假设你的图片在资源文件中，且你知道原点是 (-10, -10)，分辨率 0.05
-    mapUrl = cfg->mapPngFolder();
-    if (!mapUrl.endsWith("/"))
-    {
-        mapUrl += "/";
-    }
+    // 地图分辨率
     m_mapResolution = cfg->mapResolution() / 1000.0;
 
-    // 创建线程
-    m_rosThread = new QThread(this);
+    AgvData *agvData = AgvData::instance();
 
-    // 创建 Client (注意：不能传 this 作为 parent，否则无法移动线程)
-    m_rosClient = new RosBridgeClient();
+    // 链接信号
+    connect(agvData, &AgvData::pointCloudDataReady, this, &MonitorWidget::updatePointCloud);
+    connect(agvData, &AgvData::agvStateChanged, this, &MonitorWidget::updateAgvState);
 
-    // 移动到子线程
-    m_rosClient->moveToThread(m_rosThread);
+    // 初始化图层（注意顺序：先加入的先画，在底层）
+    m_mapLayer = new MapLayer();
+    m_pointPathLayer = new PointPathLayer();
+    m_robotLayer = new RobotLayer();
+    m_pointCloudLayer = new PointCloudLayer();
 
-    // 连接信号槽 (UI 更新逻辑不变)
-    connect(m_rosClient, &RosBridgeClient::scanReceived, this, &MonitorWidget::updateScan);
-    connect(m_rosClient, &RosBridgeClient::agvStateReceived, this, &MonitorWidget::updateAgvState);
-
-    // 启动连接逻辑
-    // 当线程启动时，调用 connectToRos。使用 QueueConnection 确保在子线程执行
-    QString ip = cfg->rosBridgeIp();
-    int port = cfg->rosBridgePort();
-    QString url = QStringLiteral("ws://%1:%2").arg(ip).arg(port);
-
-    connect(m_rosThread, &QThread::started, m_rosClient, [this, url]()
-            { m_rosClient->connectToRos(url); });
-
-    // 资源清理：当 Widget 销毁时，退出线程
-    connect(m_rosThread, &QThread::finished, m_rosClient, &QObject::deleteLater);
-
-    // 启动线程
-    m_rosThread->start();
+    m_layers << new GridLayer() << m_mapLayer << m_pointPathLayer << m_robotLayer << m_pointCloudLayer;
 }
 
 // 析构函数中记得退出线程 (如果 MonitorWidget.cpp 没有析构函数，可以加一个)
 MonitorWidget::~MonitorWidget()
 {
-    if (m_rosThread->isRunning())
-    {
-        m_rosThread->quit();
-        m_rosThread->wait();
-    }
 }
 
 // 页面载入时触发
@@ -132,29 +109,25 @@ void MonitorWidget::handleMapIdChanged(int mapId)
 {
     setMapId(mapId);
     handleMapName(mapId);
+    handleMapJsonName(mapId);
 }
 
 // 更新 scan
-void MonitorWidget::updateScan(const QVector<QPointF> &points)
+void MonitorWidget::updatePointCloud(const QVector<QPointF> &points)
 {
-    m_scanPoints = points; // 保留原始数据以备不时之需
-
-    // 【预计算】在这里生成绘制所需的 Line
-    const double epsilon = 0.001;
-    m_scanLines.clear();
-    m_scanLines.reserve(points.size());
-
-    for (const QPointF &p : points)
-    {
-        m_scanLines.append(QLineF(p, QPointF(p.x() + epsilon, p.y())));
-    }
-
-    update(); // 触发重绘
+    m_pointCloudLayer->updatePoints(points);
+    update();
 }
 
 // 处理 mapName
 void MonitorWidget::handleMapName(int mapId)
 {
+    // 地图路径前缀
+    QString mapUrl = cfg->mapPngFolder();
+    if (!mapUrl.endsWith("/"))
+    {
+        mapUrl += "/";
+    }
     QString newMapName = QString::number(mapId) + ".png";
     // 判断是否需要切换地图
     if (m_mapName != newMapName)
@@ -165,6 +138,25 @@ void MonitorWidget::handleMapName(int mapId)
     }
 }
 
+// 处理 mapName
+void MonitorWidget::handleMapJsonName(int mapId)
+{
+    // 地图路径前缀
+    QString mapJsonUrl = cfg->mapJsonFolder();
+    if (!mapJsonUrl.endsWith("/"))
+    {
+        mapJsonUrl += "/";
+    }
+    QString newMapJsonName = "points_and_path_" + QString::number(mapId) + ".json";
+    // 判断是否需要切换地图
+    if (m_mapJsonName != newMapJsonName)
+    {
+        loadMapJson(mapJsonUrl + newMapJsonName);
+        qDebug() << "地图切换" << m_mapJsonName << " -> " << newMapJsonName;
+        m_mapJsonName = newMapJsonName;
+    }
+}
+
 // 处理 agvState
 void MonitorWidget::updateAgvState(const QVector<int> &agvState)
 {
@@ -172,10 +164,145 @@ void MonitorWidget::updateAgvState(const QVector<int> &agvState)
     m_agvY = agvState[2];
     m_agvAngle = agvState[3];
 
+    m_robotLayer->updatePose(agvState[1], agvState[2], agvState[3]);
+
     // 触发界面重绘
     update();
 
     // qDebug() << "x: " << m_agvX << ", y: " << m_agvY << ", angle: " << m_agvAngle;
+}
+
+// 载入 map 的本地 json 文件
+void MonitorWidget::loadMapJson(const QString &path)
+{
+    // 1. 读取文件内容
+    QFile file(path);
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
+    {
+        qWarning() << "无法打开JSON文件:" << path;
+        return;
+    }
+
+    QByteArray jsonData = file.readAll();
+    file.close();
+
+    // 2. 解析 JSON
+    QJsonParseError parseError;
+    QJsonDocument doc = QJsonDocument::fromJson(jsonData, &parseError);
+
+    if (parseError.error != QJsonParseError::NoError)
+    {
+        qWarning() << "JSON 解析错误:" << parseError.errorString();
+        return;
+    }
+
+    // 3. 提取数据
+    if (doc.isObject())
+    {
+        QJsonObject jsonObj = doc.object();
+
+        // 假设 JSON 结构中有一个名为 "points" 的数组
+        // 例如: { "points": [ {"x": 1.2, "y": 3.4}, {"x": 5.0, "y": 6.0} ] }
+        if (doc.isObject())
+        {
+            QJsonObject jsonObj = doc.object();
+
+            if (jsonObj.contains("point") && jsonObj["point"].isArray())
+            {
+                QJsonArray pointsArray = jsonObj["point"].toArray();
+
+                // 1. 第一轮遍历：缓存点位到 m_pointMap
+                m_pointMap.clear();
+                for (int i = 0; i < pointsArray.size(); ++i)
+                {
+                    QJsonObject pObj = pointsArray[i].toObject();
+                    m_pointMap.insert(pObj.value("id").toInt(), pObj);
+                }
+
+                // 2. 第二轮遍历：构造显示用的点和线
+                QVector<MapPointData> pointsList;
+                QVector<MapPathData> pathsList;
+
+                for (int i = 0; i < pointsArray.size(); ++i)
+                {
+                    QJsonObject pointObj = pointsArray[i].toObject();
+                    int startId = pointObj.value("id").toInt();
+                    QPointF startPos(pointObj.value("x").toDouble() / 1000.0,
+                                     pointObj.value("y").toDouble() / 1000.0);
+
+                    // --- 处理点位数据 ---
+                    MapPointData pData;
+                    pData.pos = startPos;
+                    pData.id = QString::number(startId);
+
+                    bool isCharge = pointObj.value("charge").toBool();
+                    bool isAct = pointObj.value("loading").toBool() || pointObj.value("unloading").toBool();
+
+                    // --- 颜色分配逻辑 ---
+                    if (isCharge)
+                    {
+                        pData.color = QColor(0, 120, 215, 180); // 蓝色
+                    }
+                    else if (isAct)
+                    {
+                        pData.color = QColor(215, 120, 0, 180); // 棕色
+                    }
+                    else
+                    {
+                        pData.color = QColor(255, 0, 0, 180); // 默认红
+                    }
+
+                    pointsList.append(pData);
+
+                    // --- 处理路径数据 (targets) ---
+                    if (pointObj.contains("targets") && pointObj["targets"].isArray())
+                    {
+                        QJsonArray targetsArray = pointObj["targets"].toArray();
+                        for (int j = 0; j < targetsArray.size(); ++j)
+                        {
+                            QJsonObject tObj = targetsArray[j].toObject();
+                            int endId = tObj.value("id").toInt();
+
+                            // 通过缓存查找到目标点坐标
+                            if (m_pointMap.contains(endId))
+                            {
+                                QJsonObject targetPoint = m_pointMap.value(endId);
+                                MapPathData pathData;
+                                pathData.start = startPos;
+                                pathData.end = QPointF(targetPoint.value("x").toDouble() / 1000.0,
+                                                       targetPoint.value("y").toDouble() / 1000.0);
+                                pathData.type = tObj.value("type").toInt();
+
+                                // 解析控制点 (mm -> m)
+                                QJsonObject c1 = tObj.value("ctl_1").toObject();
+                                pathData.ctl1 = QPointF(c1.value("x").toDouble() / 1000.0,
+                                                        c1.value("y").toDouble() / 1000.0);
+
+                                QJsonObject c2 = tObj.value("ctl_2").toObject();
+                                pathData.ctl2 = QPointF(c2.value("x").toDouble() / 1000.0,
+                                                        c2.value("y").toDouble() / 1000.0);
+
+                                pathsList.append(pathData);
+                            }
+                        }
+                    }
+                }
+
+                if (m_pointPathLayer)
+                {
+                    m_pointPathLayer->updateData(pointsList, pathsList);
+                }
+            }
+            update();
+        }
+        else
+        {
+            qWarning() << "JSON 中未找到 'points' 数组";
+        }
+    }
+
+    // 4. 通知重绘（如果解析出的数据影响视觉）
+    update();
 }
 
 // 载入 map 的本地 png 格式文件
@@ -197,6 +324,12 @@ void MonitorWidget::loadLocalMap(const QString &imagePath, double originX, doubl
     m_mapOriginY = originY;
     m_hasMap = true;
 
+    // --- 同步给图层 ---
+    if (m_mapLayer)
+    {
+        m_mapLayer->updateMap(m_mapPixmap, m_mapResolution, m_mapOriginX, m_mapOriginY);
+    }
+
     // 3. 触发重绘
     update();
 
@@ -209,101 +342,63 @@ void MonitorWidget::paintEvent(QPaintEvent *event)
     QPainter painter(this);
     painter.setRenderHint(QPainter::Antialiasing, true);
 
-    // 计算当前可用的左侧绘图区域宽度
+    // 1. 绘制背景（保持原样）
     int leftSectionWidth = getDrawingWidth();
-    // 绘制背景（如果地图没占满，保证左侧是黑色）
     painter.fillRect(0, 0, leftSectionWidth, height(), QColor("#ffffff"));
 
-    // --- 1. 视图变换 (View Transform) ---
-    // 将原点移动到屏幕中心 + 偏移量
+    // 2. 视图变换 (View Transform) - 这一步是所有图层的“父级坐标系”
+    // 确保缩放和平移逻辑与原来完全一致
     painter.translate(m_offset);
-    // 缩放 (m_scale 代表 1米 对应的像素数)
     painter.scale(m_scale, m_scale);
 
-    // --- 2. 绘制网格 (Grid) ---
-    painter.save();
-    painter.setPen(QPen(QColor(60, 60, 60), 0)); // 极细线
-    painter.drawLine(QPointF(-0.5, 0), QPointF(0.5, 0));
-    painter.drawLine(QPointF(0, -0.5), QPointF(0, 0.5));
-    painter.restore();
-
-    // --- 3. 绘制地图 (Map) ---
-    if (m_hasMap)
+    // 3. 遍历图层执行绘制
+    // 顺序：GridLayer -> MapLayer -> RobotLayer (AgvLayer)
+    for (BaseLayer *layer : m_layers)
     {
-        painter.save();
-        painter.translate(m_mapOriginX, m_mapOriginY);
-
-        double worldWidth = m_mapPixmap.width() * m_mapResolution;
-        double worldHeight = m_mapPixmap.height() * m_mapResolution;
-
-        // 地图绘制 (假设地图原点在左下角，向上绘制)
-        QRectF targetRect(0, -worldHeight, worldWidth, worldHeight);
-        painter.drawPixmap(targetRect, m_mapPixmap, m_mapPixmap.rect());
-
-        painter.restore();
+        if (layer && layer->isVisible())
+        {
+            layer->draw(&painter);
+        }
     }
-
-    // --- 4. 绘制机器人与雷达 (Robot & Scan) ---
-    painter.save();
-
-    // 4.1 全局位置变换 (Global Position)
-    // 将画家移动到小车在地图上的位置
-    double x_m = m_agvX / 1000.0;
-    double y_m = m_agvY / 1000.0;
-    double theta_rad = m_agvAngle / 1000.0;
-
-    // ROS (x, y) -> Qt (x, -y)
-    // 这一步将坐标系原点定在小车中心
-    painter.translate(x_m, -y_m);
-
-    // 4.2 旋转 (Rotation)
-    // ROS 角度逆时针(CCW)为正 -> Qt 旋转顺时针(CW)
-    // 使用负号抵消方向差异
-    painter.rotate(-qRadiansToDegrees(theta_rad));
-
-    // 4.3 局部坐标系修正 (Local Frame Flip)
-    // 此时 X轴指向车头。
-    // 但 ROS Y轴指向车左，Qt Y轴指向车右(屏幕下)。
-    // 必须翻转 Y 轴，统一局部坐标系标准。
-    painter.scale(1, -1);
-
-    // --- 此时坐标系状态：原点在车中心，X轴向前，Y轴向左 (符合 ROS 标准) ---
-
-    // 4.4 绘制雷达点 (Draw Scan)
-    // 因为坐标系已经跟随小车变换，直接绘制局部雷达数据即可
-    if (!m_scanLines.isEmpty())
-    {
-        QPen scanPen(Qt::red);
-        scanPen.setCosmetic(true); // 保持像素宽度，不随缩放变粗
-        scanPen.setWidth(2);
-        painter.setPen(scanPen);
-        painter.drawLines(m_scanLines);
-    }
-
-    // 4.5 绘制车体 (Draw AGV)
-    QPolygonF agvShape;
-    // 车头(0.3m), 左后(-0.2m, 0.2m), 右后(-0.2m, -0.2m)
-    // 因为上面做了 scale(1, -1)，这里 (0.2) 的 Y 值会正确地画在“左侧”(屏幕上方)
-    agvShape << QPointF(0.3, 0)
-             << QPointF(-0.2, 0.2)
-             << QPointF(-0.2, -0.2);
-
-    painter.setBrush(QColor(0, 191, 255, 200)); // DeepSkyBlue
-    painter.setPen(QPen(Qt::white, 0.02));
-    painter.drawPolygon(agvShape);
-
-    // 车中心点
-    painter.setBrush(Qt::red);
-    painter.setPen(Qt::NoPen);
-    painter.drawEllipse(QPointF(0, 0), 0.05, 0.05);
-
-    painter.restore();
 }
 
 // 判定坐标是否在左侧绘图区
 bool MonitorWidget::isInDrawingArea(const QPointF &pos)
 {
     return pos.x() < getDrawingWidth();
+}
+
+// 判断是否有点位被点击
+void MonitorWidget::checkPointClick(const QPointF &screenPos)
+{
+    // 1. 屏幕坐标转世界坐标
+    // World = (Screen - Offset) / Scale
+    QPointF clickWorldPos = (screenPos - m_offset) / m_scale;
+
+    // 注意：绘图时使用了 -y (在 centerOnAgv 等处体现)，所以这里反算 y 时需要变号
+    double worldX = clickWorldPos.x();
+    double worldY = -clickWorldPos.y();
+
+    // 2. 遍历缓存的点位进行碰撞检测
+    double clickRadius = m_pointPathLayer->radius;
+
+    QMapIterator<int, QJsonObject> it(m_pointMap);
+    while (it.hasNext())
+    {
+        it.next();
+        QJsonObject obj = it.value();
+        double px = obj.value("x").toDouble() / 1000.0;
+        double py = obj.value("y").toDouble() / 1000.0;
+
+        double dist = QLineF(worldX, worldY, px, py).length();
+        if (dist < clickRadius)
+        {
+            int clickedId = it.key();
+            qDebug() << "触摸点位被点击，ID:" << clickedId;
+            emit pointClicked(clickedId);
+            break;
+        }
+    }
 }
 
 // 鼠标交互：平移
@@ -322,6 +417,8 @@ void MonitorWidget::mousePressEvent(QMouseEvent *event)
     if (event->button() == Qt::LeftButton)
     {
         m_lastMousePos = event->localPos();
+
+        checkPointClick(event->localPos());
     }
 }
 
@@ -354,11 +451,7 @@ void MonitorWidget::wheelEvent(QWheelEvent *event)
     }
 
     // --- 获取鼠标在屏幕上的当前位置 ---
-    QPointF mousePos;
-
-    // Qt 5: QWheelEvent 没有 localPos()，使用 posF() (如果有) 或者 pos()
-    // 为了最大兼容性，我们使用 pos() 并转为 QPointF
-    mousePos = QPointF(event->position());
+    QPointF mousePos = QPointF(event->position());
 
     // --- 计算缩放前的“世界坐标” ---
     // (相对于地图原点/AGV的逻辑坐标)
@@ -437,6 +530,12 @@ void MonitorWidget::handleTouchEvent(QTouchEvent *event)
             return;
         }
         m_touchActive = true;
+
+        if (points.count() == 1)
+        {
+
+            checkPointClick(points.first().pos());
+        }
     }
 
     if (!m_touchActive)

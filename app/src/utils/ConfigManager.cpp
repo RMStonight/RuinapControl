@@ -51,6 +51,7 @@ void ConfigManager::load()
     // 文件夹路径
     m_resourceFolder = settings.value("Folder/resource", "").toString();
     m_mapPngFolder = settings.value("Folder/mapPng", "").toString();
+    m_mapJsonFolder = settings.value("Folder/mapJson", "").toString();
     m_configFolder = settings.value("Folder/config", "").toString();
     // 网络通讯
     m_commIp = settings.value("Network/CommIp", "host.docker.internal").toString();
@@ -84,6 +85,7 @@ void ConfigManager::save()
     // 文件夹路径
     settings.setValue("Folder/resource", m_resourceFolder);
     settings.setValue("Folder/mapPng", m_mapPngFolder);
+    settings.setValue("Folder/mapJson", m_mapJsonFolder);
     settings.setValue("Folder/config", m_configFolder);
     // 网络通讯
     settings.setValue("Network/CommIp", m_commIp);
@@ -145,6 +147,11 @@ QString ConfigManager::mapPngFolder() const
 {
     QReadLocker locker(&m_lock);
     return m_mapPngFolder;
+}
+QString ConfigManager::mapJsonFolder() const
+{
+    QReadLocker locker(&m_lock);
+    return m_mapJsonFolder;
 }
 QString ConfigManager::configFolder() const
 {
@@ -231,6 +238,11 @@ void ConfigManager::setMapPngFolder(const QString &folder)
 {
     QWriteLocker locker(&m_lock);
     m_mapPngFolder = folder;
+}
+void ConfigManager::setMapJsonFolder(const QString &folder)
+{
+    QWriteLocker locker(&m_lock);
+    m_mapJsonFolder = folder;
 }
 void ConfigManager::setConfigFolder(const QString &folder)
 {

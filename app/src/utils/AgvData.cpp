@@ -2,6 +2,7 @@
 #include <QDebug>
 #include <QJsonDocument>
 #include <QJsonParseError>
+#include "ConfigManager.h"
 
 // 全局静态指针
 static AgvData *s_instance = nullptr;
@@ -36,10 +37,46 @@ AgvData::AgvData(QObject *parent) : QObject(parent)
 {
     initData();    // 初始化值
     initParsers(); // 初始化绑定
+
+    // 创建线程
+    m_rosThread = new QThread(this);
+
+    // 创建 Client (注意：不能传 this 作为 parent，否则无法移动线程)
+    m_rosClient = new RosBridgeClient();
+
+    // 移动到子线程
+    m_rosClient->moveToThread(m_rosThread);
+
+    // 连接信号槽
+    connect(m_rosClient, &RosBridgeClient::pointCloudReceived, this, &AgvData::pointCloudDataReady);
+    connect(m_rosClient, &RosBridgeClient::agvStateReceived, this, &AgvData::agvStateChanged);
+
+    // 启动连接逻辑
+    // 当线程启动时，调用 connectToRos。使用 QueueConnection 确保在子线程执行
+    ConfigManager *cfg = ConfigManager::instance();
+    QString ip = cfg->rosBridgeIp();
+    int port = cfg->rosBridgePort();
+    QString url = QStringLiteral("ws://%1:%2").arg(ip).arg(port);
+
+    connect(m_rosThread, &QThread::started, m_rosClient, [this, url]()
+            { m_rosClient->connectToRos(url); });
+
+    // 资源清理：当 Widget 销毁时，退出线程
+    connect(m_rosThread, &QThread::finished, m_rosClient, &QObject::deleteLater);
+
+    // 启动线程
+    m_rosThread->start();
 }
 
 AgvData::~AgvData()
 {
+    // 关闭 ros 线程
+    if (m_rosThread->isRunning())
+    {
+        m_rosThread->quit();
+        m_rosThread->wait();
+    }
+
     // 程序退出时清理
     if (s_instance == this)
     {
@@ -60,7 +97,7 @@ void AgvData::initData()
     m_agvId = AgvInt(-1, "#000000");
     m_agvName = AgvString("Unconnected", "#000000");
     m_battery = AgvInt(100, "#000000");
-    m_mapId = AgvInt(-1, "#000000");
+    m_mapId = AgvInt(1, "#000000");
     m_slamX = AgvInt(-1, "#000000");
     m_slamY = AgvInt(-1, "#000000");
     m_slamAngle = AgvInt(-1, "#000000");

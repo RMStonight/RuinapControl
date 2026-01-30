@@ -42,6 +42,7 @@ private:
     // 文件路径
     QLineEdit *m_resourceFolderEdit;
     QLineEdit *m_mapPngFolderEdit;
+    QLineEdit *m_mapJsonFolderEdit;
     QLineEdit *m_configFolderEdit;
 
     // 网络设置

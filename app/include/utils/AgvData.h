@@ -9,6 +9,8 @@
 #include <QHash>
 #include <QJsonObject>
 #include <atomic>
+#include "RosBridgeClient.h"
+#include <QThread>
 
 // 为了让信号槽能用，建议定义别名
 using AgvInt = AgvAttribute<int>;
@@ -139,6 +141,9 @@ public slots:
 
 signals:
     // --- 信号 ---
+    // 定义转发给 UI 的信号
+    void pointCloudDataReady(const QVector<QPointF> &points);
+    void agvStateChanged(const QVector<int> &state);
 
 private:
     explicit AgvData(QObject *parent = nullptr);
@@ -146,6 +151,10 @@ private:
 
     // 初始化值
     void initData();
+
+    // rosClient
+    RosBridgeClient *m_rosClient;
+    QThread *m_rosThread;
 
     // 定义一个解析器函数类型
     using ParserFunc = std::function<void(const QJsonObject &)>;

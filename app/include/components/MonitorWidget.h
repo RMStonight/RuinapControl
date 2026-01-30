@@ -6,10 +6,14 @@
 #include <QVector>
 #include <QPointF>
 #include <QTouchEvent>
-#include <QThread>
 #include <QLabel>
-
-class RosBridgeClient;
+#include "layers/BaseLayer.h"
+#include "layers/GridLayer.h"
+#include "layers/MapLayer.h"
+#include "layers/AgvLayer.h"
+#include "layers/PointPathLayer.h"
+#include "layers/PointCloudLayer.h"
+#include "utils/ConfigManager.h"
 
 class MonitorWidget : public BaseDisplayWidget // 2. 继承基类
 {
@@ -19,22 +23,25 @@ public:
     ~MonitorWidget();
 
     void loadLocalMap(const QString &imagePath, double originX, double originY);
-    void centerOnAgv(); 
+    void loadMapJson(const QString &path);
+    void centerOnAgv();
     void setMapId(int id);
-    // setSharedOptionalInfo 已由基类实现
 
 protected:
     void paintEvent(QPaintEvent *event) override;
-    void wheelEvent(QWheelEvent *event) override;      
-    void mousePressEvent(QMouseEvent *event) override; 
+    void wheelEvent(QWheelEvent *event) override;
+    void mousePressEvent(QMouseEvent *event) override;
     void mouseMoveEvent(QMouseEvent *event) override;
     bool event(QEvent *event) override;
     void showEvent(QShowEvent *event) override;
-    // resizeEvent 已由基类处理
+
+signals:
+    void pointClicked(int id); // 点击点位时发出的信号
 
 private slots:
-    void updateScan(const QVector<QPointF> &points);
+    void updatePointCloud(const QVector<QPointF> &points);
     void handleMapName(int mapId);
+    void handleMapJsonName(int mapId);
     void updateAgvState(const QVector<int> &agvState);
 
 public slots:
@@ -42,33 +49,40 @@ public slots:
 
 private:
     void handleTouchEvent(QTouchEvent *event);
-    bool isInDrawingArea(const QPointF &pos); 
+    bool isInDrawingArea(const QPointF &pos);
+    void checkPointClick(const QPointF &screenPos);
 
 private:
-    RosBridgeClient *m_rosClient;
-    QThread *m_rosThread;
+    ConfigManager *cfg = ConfigManager::instance();
 
-    // OptionalInfoWidget *m_currentSideBar; // 已移动到基类
-    
     QLabel *m_mapIdLabel;
     QPixmap m_mapPixmap;
     double m_mapOriginX = 0;
     double m_mapOriginY = 0;
     double m_mapResolution = 0.05;
     bool m_hasMap = false;
-    QString mapUrl;
     QString m_mapName = "";
+    QString m_mapJsonName = "";
     int m_agvX = 0;
     int m_agvY = 0;
     int m_agvAngle = 0;
 
-    QVector<QPointF> m_scanPoints;
-    QVector<QLineF> m_scanLines;
+    QVector<QPointF> m_pointCloud;
 
     double m_scale = 50.0;
     QPointF m_offset = QPointF(400, 300);
     QPointF m_lastMousePos;
     bool m_touchActive = false;
+
+    QList<BaseLayer *> m_layers;
+    // 为了方便传递数据，保留具体的指针引用
+    MapLayer *m_mapLayer;
+    RobotLayer *m_robotLayer;
+    PointPathLayer *m_pointPathLayer;
+    PointCloudLayer *m_pointCloudLayer;
+
+    // 缓存点位全局变量：Key 为点位 ID，Value 为该点位的完整 JSON 对象
+    QMap<int, QJsonObject> m_pointMap;
 };
 
 #endif // MONITORWIDGET_H

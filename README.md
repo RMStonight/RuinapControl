@@ -1,5 +1,19 @@
 # This is a README
 
+## 20260130 V1.1.8
+
+* 新增 mapJsonFolder 参数，用于配置调度点位线路地图的路径
+* RosBridgeClient 子线程的创建现在转移到了 AgvData 中
+* 取消了对 /scan 的订阅，现在订阅 /laser_points 来绘制雷达点云
+* MonitorWidget 大改绘制逻辑且移除了对 RosBridgeClient 子线程的处理
+* MonitorWidget 新增在切换地图时，对 points_and_path_x.json 文件的加载
+* 创建 BaseLayer 基类，用于绘制不同的图层，在此基础上创建 GridLayer、MapLayer、PointPathLayer、AgvLayer、PointCloudLayer
+* GridLayer 绘制原点处的十字标，后期可以优化扩展成网格
+* MapLayer 绘制加载的 png 地图
+* PointPathLayer 绘制调度地图的点位和线路
+* AgvLayer 绘制 agv 本体模型，可以根据系统配置的 vehicleType 来对应不同的模型
+* PointCloudLayer 绘制雷达点云数据
+
 ## 20260128 V1.1.7
 
 * 新增系统参数 充电阈值

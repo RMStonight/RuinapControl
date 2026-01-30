@@ -48,7 +48,10 @@ void RosBridgeClient::connectToRos(const QString &url)
     }
 
     // 如果定时器正在运行，先停止，避免冲突
-    if (m_reconnectTimer->isActive()) m_reconnectTimer->stop();
+    if (m_reconnectTimer->isActive())
+    {
+        m_reconnectTimer->stop();
+    }
 
     qDebug() << "RosBridge: Connecting to" << url << "in thread:" << QThread::currentThreadId();
     m_webSocket->open(QUrl(url));
@@ -58,8 +61,14 @@ void RosBridgeClient::connectToRos(const QString &url)
 void RosBridgeClient::closeConnection()
 {
     m_needReconnect = false; // 标记为不需要重连
-    if (m_reconnectTimer) m_reconnectTimer->stop();
-    if (m_webSocket) m_webSocket->close();
+    if (m_reconnectTimer)
+    {
+        m_reconnectTimer->stop();
+    }
+    if (m_webSocket)
+    {
+        m_webSocket->close();
+    }
 }
 
 void RosBridgeClient::onConnected()
@@ -69,7 +78,7 @@ void RosBridgeClient::onConnected()
     emit connected();
 
     // subscribe("/map", "nav_msgs/OccupancyGrid");
-    subscribe("/scan", "sensor_msgs/LaserScan");
+    subscribe("/laser_points", "std_msgs/Float32MultiArray");
     subscribe("/map_name", "std_msgs/String");
     subscribe("/agv_state", "std_msgs/Int32MultiArray");
 }
@@ -91,13 +100,13 @@ void RosBridgeClient::onSocketDisconnected()
 void RosBridgeClient::onSocketError(QAbstractSocket::SocketError error)
 {
     qDebug() << "RosBridge: Socket Error:" << error << m_webSocket->errorString();
-    
+
     // 如果是 ConnectionRefused (如 ROS 未启动)，Socket 不会进入 Connected 状态，
     // 可能也不会触发 disconnected 信号，所以这里也需要触发重连逻辑。
     if (m_needReconnect && !m_reconnectTimer->isActive())
     {
-         // 稍微延迟重连，避免错误刷屏
-         m_reconnectTimer->start();
+        // 稍微延迟重连，避免错误刷屏
+        m_reconnectTimer->start();
     }
 }
 
@@ -107,9 +116,10 @@ void RosBridgeClient::doReconnect()
     if (m_needReconnect && !m_url.isEmpty())
     {
         qDebug() << "RosBridge: Attempting to reconnect...";
-        if (m_webSocket) {
-             m_webSocket->abort(); // 确保处于关闭状态
-             m_webSocket->open(QUrl(m_url));
+        if (m_webSocket)
+        {
+            m_webSocket->abort(); // 确保处于关闭状态
+            m_webSocket->open(QUrl(m_url));
         }
     }
 }
@@ -163,9 +173,9 @@ void RosBridgeClient::processCborMessage(const QByteArray &rawData)
             // qDebug() << "Parsing Map in Thread:" << QThread::currentThreadId();
             // parseMapCbor(msg);
         }
-        else if (topic == "/scan")
+        else if (topic == "/laser_points")
         {
-            parseScanCbor(msg);
+            parsePointCloudCbor(msg);
         }
         // 处理 map_name
         else if (topic == "/map_name")
@@ -193,49 +203,39 @@ QByteArray RosBridgeClient::extractByteArray(const QCborValue &val)
     return QByteArray();
 }
 
-void RosBridgeClient::parseScanCbor(const QCborValue &msgVal)
+void RosBridgeClient::parsePointCloudCbor(const QCborValue &msgVal)
 {
-    // 保持原逻辑不变...
-    QCborMap msg = msgVal.toMap();
-    double angle_min = msg[QStringLiteral("angle_min")].toDouble();
-    double angle_increment = msg[QStringLiteral("angle_increment")].toDouble();
-    double range_min = msg[QStringLiteral("range_min")].toDouble();
-    double range_max = msg[QStringLiteral("range_max")].toDouble();
-
-    QCborValue rangesVal = msg[QStringLiteral("ranges")];
     QVector<QPointF> points;
-    QByteArray data = extractByteArray(rangesVal);
+    if (!msgVal.isMap())
+        return;
 
-    if (!data.isEmpty())
+    QCborMap msg = msgVal.toMap();
+    if (msg.contains(QStringLiteral("data")))
     {
-        int count = data.size() / 4;
-        points.reserve(count);
-        const float *rawRanges = reinterpret_cast<const float *>(data.constData());
-        for (int i = 0; i < count; ++i)
+        QCborValue dataVal = msg[QStringLiteral("data")];
+        QByteArray byteArray = extractByteArray(dataVal);
+
+        if (!byteArray.isEmpty())
         {
-            float r = rawRanges[i];
-            if (std::isfinite(r) && r > range_min && r < range_max)
+            // Float32 占用 4 字节，每 3 个值为一组 (x, y, 0)
+            int floatCount = byteArray.size() / 4;
+            const float *raw = reinterpret_cast<const float *>(byteArray.constData());
+            for (int i = 0; i + 2 < floatCount; i += 3)
             {
-                double angle = angle_min + i * angle_increment;
-                points.append(QPointF(r * cos(angle), r * sin(angle)));
+                // 单位为 m
+                points.append(QPointF(raw[i], raw[i + 1]));
             }
         }
-    }
-    else if (rangesVal.isArray())
-    {
-        QCborArray ranges = rangesVal.toArray();
-        points.reserve(ranges.size());
-        for (int i = 0; i < ranges.size(); ++i)
+        else if (dataVal.isArray())
         {
-            double r = ranges[i].toDouble();
-            if (r > range_min && r < range_max)
+            QCborArray arr = dataVal.toArray();
+            for (int i = 0; i + 2 < arr.size(); i += 3)
             {
-                double angle = angle_min + i * angle_increment;
-                points.append(QPointF(r * cos(angle), r * sin(angle)));
+                points.append(QPointF(arr[i].toDouble(), arr[i + 1].toDouble()));
             }
         }
+        emit pointCloudReceived(points);
     }
-    emit scanReceived(points);
 }
 
 void RosBridgeClient::parseMapNameCbor(const QCborValue &msgVal)
@@ -248,7 +248,7 @@ void RosBridgeClient::parseMapNameCbor(const QCborValue &msgVal)
         if (msg.contains(QStringLiteral("data")))
         {
             QString mapName = msg[QStringLiteral("data")].toString();
-            
+
             // 发送信号
             emit mapNameReceived(mapName);
         }
@@ -262,7 +262,7 @@ void RosBridgeClient::parseAgvStateCbor(const QCborValue &msgVal)
     if (msgVal.isMap())
     {
         QCborMap msg = msgVal.toMap();
-        
+
         // 检查是否存在 "data" 字段
         if (msg.contains(QStringLiteral("data")))
         {
@@ -275,7 +275,7 @@ void RosBridgeClient::parseAgvStateCbor(const QCborValue &msgVal)
                 // Int32 占用 4 字节
                 int count = byteArray.size() / 4;
                 agvState.reserve(count);
-                
+
                 // 重新解释内存为 int32_t 指针
                 const int32_t *raw = reinterpret_cast<const int32_t *>(byteArray.constData());
                 for (int i = 0; i < count; ++i)
