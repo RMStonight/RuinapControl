@@ -6,10 +6,10 @@
 #include "utils/ConfigManager.h"
 #include <QDebug>
 
-class RobotLayer : public BaseLayer
+class AgvLayer : public BaseLayer
 {
 public:
-    RobotLayer() : m_agvScale(1.0) {}
+    AgvLayer() : m_agvScale(1.0) {}
 
     void setAgvScale(double scale) { m_agvScale = scale; }
 
@@ -18,6 +18,16 @@ public:
         m_x = x / 1000.0;
         m_y = y / 1000.0;
         m_rad = angle / 1000.0;
+    }
+
+    QPointF getPos()
+    {
+        return QPointF(m_x, m_y);
+    }
+
+    double getAngle()
+    {
+        return m_rad;
     }
 
     void draw(QPainter *painter) override

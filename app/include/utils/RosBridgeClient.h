@@ -26,6 +26,7 @@ public slots:
     void connectToRos(const QString &url);
     void closeConnection();
     void subscribe(const QString &topic, const QString &type);
+    void setInitialPose(const QPointF &pos, double angle);
 
 signals:
     void connected();

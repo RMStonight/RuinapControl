@@ -1,5 +1,15 @@
 # This is a README
 
+## 20260202 V1.1.9
+
+* 开发重定位功能，支持鼠标 + 触屏操作，通过发布 ros 节点 /baseinipose 来进行交互
+* PointCloudLayer 优化，在重定位模式下锁定数据更新，将点云坐标转换为以车体为中心，并响应重定位的移动和旋转
+* AgvLayer 提供 getPos 和 getAngle 方法
+* AgvData 中新增一个 requestInitialPose 重定位信号，用于转发 MonitorWidget 中发出的信号，转发至 RosBridgeClient 子线程
+* MonitorWidget 中新增了对重定位功能的处理逻辑
+* RosBridgeClient 中新增了发布重定位 topic 的槽函数 setInitialPose
+* RelocationLayer 用于实现重定位交互的大小圆圈
+
 ## 20260130 V1.1.8
 
 * 新增 mapJsonFolder 参数，用于配置调度点位线路地图的路径

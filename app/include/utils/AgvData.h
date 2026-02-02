@@ -144,6 +144,7 @@ signals:
     // 定义转发给 UI 的信号
     void pointCloudDataReady(const QVector<QPointF> &points);
     void agvStateChanged(const QVector<int> &state);
+    void requestInitialPose(const QPointF &pos, double angle);
 
 private:
     explicit AgvData(QObject *parent = nullptr);
@@ -240,10 +241,10 @@ private:
     std::atomic<int> m_manualVx;     // mm/s
     std::atomic<int> m_manualVy;     // mm/s
     // std::atomic<int> m_manualVth;    // 100°
-    std::atomic<int> m_iniX;         // 重定位x
-    std::atomic<int> m_iniY;         // 重定位y
-    std::atomic<int> m_iniW;         // 重定位w
-    std::atomic<int> m_music;        // 喇叭操作，0无，1切歌，2音量+，3音量-
+    std::atomic<int> m_iniX;  // 重定位x
+    std::atomic<int> m_iniY;  // 重定位y
+    std::atomic<int> m_iniW;  // 重定位w
+    std::atomic<int> m_music; // 喇叭操作，0无，1切歌，2音量+，3音量-
 
     // OptionalInfo 需要单独备份
     QJsonObject m_optionalInfo;

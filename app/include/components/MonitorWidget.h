@@ -7,6 +7,7 @@
 #include <QPointF>
 #include <QTouchEvent>
 #include <QLabel>
+#include <QPushButton>
 #include "layers/BaseLayer.h"
 #include "layers/GridLayer.h"
 #include "layers/MapLayer.h"
@@ -14,6 +15,8 @@
 #include "layers/PointPathLayer.h"
 #include "layers/PointCloudLayer.h"
 #include "utils/ConfigManager.h"
+#include "layers/RelocationLayer.h"
+#include "AgvData.h"
 
 class MonitorWidget : public BaseDisplayWidget // 2. 继承基类
 {
@@ -32,17 +35,23 @@ protected:
     void wheelEvent(QWheelEvent *event) override;
     void mousePressEvent(QMouseEvent *event) override;
     void mouseMoveEvent(QMouseEvent *event) override;
+    void mouseReleaseEvent(QMouseEvent *event) override;
     bool event(QEvent *event) override;
     void showEvent(QShowEvent *event) override;
 
 signals:
     void pointClicked(int id); // 点击点位时发出的信号
+    void baseIniPose(const QPointF &pos, double angle);
 
 private slots:
     void updatePointCloud(const QVector<QPointF> &points);
     void handleMapName(int mapId);
     void handleMapJsonName(int mapId);
     void updateAgvState(const QVector<int> &agvState);
+    void startRelocation();
+    void finishRelocation();
+    void cancelRelocation();
+    void exitRelocationMode();
 
 public slots:
     void handleMapIdChanged(int mapId);
@@ -54,6 +63,7 @@ private:
 
 private:
     ConfigManager *cfg = ConfigManager::instance();
+    AgvData *agvData = AgvData::instance();
 
     QLabel *m_mapIdLabel;
     QPixmap m_mapPixmap;
@@ -77,12 +87,21 @@ private:
     QList<BaseLayer *> m_layers;
     // 为了方便传递数据，保留具体的指针引用
     MapLayer *m_mapLayer;
-    RobotLayer *m_robotLayer;
+    AgvLayer *m_agvLayer;
     PointPathLayer *m_pointPathLayer;
     PointCloudLayer *m_pointCloudLayer;
+    RelocationLayer *m_reloLayer;
+    bool m_isDraggingBig = false;
+    bool m_isDraggingSmall = false;
+    bool m_isRelocating = false; // 标记是否处于重定位模式
+    QPointF m_dragOffset;        // 记录拖拽偏移
 
     // 缓存点位全局变量：Key 为点位 ID，Value 为该点位的完整 JSON 对象
     QMap<int, QJsonObject> m_pointMap;
+
+    QPushButton *m_reloBtn;    // 重定位按钮
+    QPushButton *m_confirmBtn; // 确认按钮
+    QPushButton *m_cancelBtn;  // 取消按钮
 };
 
 #endif // MONITORWIDGET_H

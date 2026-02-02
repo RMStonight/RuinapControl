@@ -53,6 +53,7 @@ set(SOURCES
     include/layers/MapLayer.h
     include/layers/AgvLayer.h
     include/layers/PointPathLayer.h
+    include/layers/RelocationLayer.h
 
     resources/app.qrc
 )

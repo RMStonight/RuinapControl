@@ -50,6 +50,7 @@ AgvData::AgvData(QObject *parent) : QObject(parent)
     // 连接信号槽
     connect(m_rosClient, &RosBridgeClient::pointCloudReceived, this, &AgvData::pointCloudDataReady);
     connect(m_rosClient, &RosBridgeClient::agvStateReceived, this, &AgvData::agvStateChanged);
+    connect(this, &AgvData::requestInitialPose, m_rosClient, &RosBridgeClient::setInitialPose);
 
     // 启动连接逻辑
     // 当线程启动时，调用 connectToRos。使用 QueueConnection 确保在子线程执行

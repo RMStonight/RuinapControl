@@ -1,6 +1,5 @@
 #include "components/MonitorWidget.h"
 #include "utils/RosBridgeClient.h"
-#include "AgvData.h"
 #include <QPainter>
 #include <QWheelEvent>
 #include <QMouseEvent>
@@ -39,8 +38,6 @@ MonitorWidget::MonitorWidget(QWidget *parent) : BaseDisplayWidget(parent)
     // 地图分辨率
     m_mapResolution = cfg->mapResolution() / 1000.0;
 
-    AgvData *agvData = AgvData::instance();
-
     // 链接信号
     connect(agvData, &AgvData::pointCloudDataReady, this, &MonitorWidget::updatePointCloud);
     connect(agvData, &AgvData::agvStateChanged, this, &MonitorWidget::updateAgvState);
@@ -48,10 +45,42 @@ MonitorWidget::MonitorWidget(QWidget *parent) : BaseDisplayWidget(parent)
     // 初始化图层（注意顺序：先加入的先画，在底层）
     m_mapLayer = new MapLayer();
     m_pointPathLayer = new PointPathLayer();
-    m_robotLayer = new RobotLayer();
+    m_agvLayer = new AgvLayer();
     m_pointCloudLayer = new PointCloudLayer();
+    m_reloLayer = new RelocationLayer();
 
-    m_layers << new GridLayer() << m_mapLayer << m_pointPathLayer << m_robotLayer << m_pointCloudLayer;
+    m_layers << new GridLayer() << m_mapLayer << m_pointPathLayer << m_agvLayer << m_pointCloudLayer << m_reloLayer;
+
+    // --- 初始化重定位相关按钮 ---
+    m_reloBtn = new QPushButton("重定位", this);
+    m_confirmBtn = new QPushButton("确认", this);
+    m_cancelBtn = new QPushButton("取消", this);
+
+    // 设置统一的基础样式（也可以单独设置颜色）
+    QString baseStyle = "QPushButton { border-radius: 5px; font-weight: bold; color: white; }";
+    m_reloBtn->setStyleSheet(baseStyle + "QPushButton { background-color: #0078d7; }");
+    m_confirmBtn->setStyleSheet(baseStyle + "QPushButton { background-color: #28a745; }"); // 绿色
+    m_cancelBtn->setStyleSheet(baseStyle + "QPushButton { background-color: #dc3545; }");  // 红色
+
+    // 设置大小和位置
+    m_reloBtn->setFixedSize(80, 40);
+    m_confirmBtn->setFixedSize(80, 40);
+    m_cancelBtn->setFixedSize(80, 40);
+
+    m_reloBtn->move(10, 50);
+    m_confirmBtn->move(10, 50);
+    m_cancelBtn->move(100, 50); // 取消按钮放在确认按钮旁边
+
+    // 初始状态
+    m_confirmBtn->hide();
+    m_cancelBtn->hide();
+    m_reloBtn->show();
+
+    // 信号槽连接
+    connect(m_reloBtn, &QPushButton::clicked, this, &MonitorWidget::startRelocation);
+    connect(m_confirmBtn, &QPushButton::clicked, this, &MonitorWidget::finishRelocation);
+    connect(m_cancelBtn, &QPushButton::clicked, this, &MonitorWidget::cancelRelocation);
+    connect(this, &MonitorWidget::baseIniPose, agvData, &AgvData::requestInitialPose);
 }
 
 // 析构函数中记得退出线程 (如果 MonitorWidget.cpp 没有析构函数，可以加一个)
@@ -69,6 +98,62 @@ void MonitorWidget::showEvent(QShowEvent *event)
     // width() 和 height() 返回的是像素值
     // qDebug() << "MonitorWidget ShowEvent - Width:" << this->width()
     //          << "Height:" << this->height();
+}
+
+// 进入重定位模式
+void MonitorWidget::startRelocation()
+{
+    m_isRelocating = true;
+    m_reloLayer->setVisible(true);
+
+    // UI 切换
+    m_reloBtn->hide();
+    m_confirmBtn->show();
+    m_cancelBtn->show();
+
+    // 同步位姿
+    QPointF agvPos = m_agvLayer->getPos();
+    double agvAngle = m_agvLayer->getAngle();
+    m_reloLayer->setPos(QPointF(agvPos.x(), -agvPos.y()));
+    m_reloLayer->setAngle(agvAngle);
+    m_pointCloudLayer->lockToLocal(agvPos, agvAngle);
+
+    update();
+}
+
+// 确认重定位
+void MonitorWidget::finishRelocation()
+{
+    qDebug() << "重定位完成:";
+    qDebug() << "ROS坐标 (m): x =" << m_reloLayer->pos().x()
+             << ", y =" << -m_reloLayer->pos().y();
+    qDebug() << "ROS角度 (rad):" << m_reloLayer->getAngle();
+
+    emit baseIniPose(QPointF(m_reloLayer->pos().x(), -m_reloLayer->pos().y()), m_reloLayer->getAngle());
+
+    exitRelocationMode();
+}
+
+// 取消重定位
+void MonitorWidget::cancelRelocation()
+{
+    // 不打印信息，直接退出
+    exitRelocationMode();
+}
+
+// 私有辅助函数：重置状态
+void MonitorWidget::exitRelocationMode()
+{
+    m_isRelocating = false;
+    m_reloLayer->setVisible(false);
+    m_pointCloudLayer->unlock();
+
+    // UI 切回原始状态
+    m_confirmBtn->hide();
+    m_cancelBtn->hide();
+    m_reloBtn->show();
+
+    update();
 }
 
 // 强制视角以 AGV 为中心
@@ -160,11 +245,16 @@ void MonitorWidget::handleMapJsonName(int mapId)
 // 处理 agvState
 void MonitorWidget::updateAgvState(const QVector<int> &agvState)
 {
+    if (m_isRelocating)
+    {
+        return;
+    }
+
     m_agvX = agvState[1];
     m_agvY = agvState[2];
     m_agvAngle = agvState[3];
 
-    m_robotLayer->updatePose(agvState[1], agvState[2], agvState[3]);
+    m_agvLayer->updatePose(agvState[1], agvState[2], agvState[3]);
 
     // 触发界面重绘
     update();
@@ -357,6 +447,18 @@ void MonitorWidget::paintEvent(QPaintEvent *event)
     {
         if (layer && layer->isVisible())
         {
+            // 如果当前是重定位模式，且正在画点云层，我们需要特殊处理坐标系
+            if (m_isRelocating && layer == m_pointCloudLayer)
+            {
+                painter.save();
+                // 应用与 AgvLayer 相同的变换：
+                painter.translate(m_reloLayer->pos().x(), m_reloLayer->pos().y());
+                painter.rotate(-qRadiansToDegrees(m_reloLayer->getAngle()));
+                // 此时 painter 的原点已经在重定位的小车中心，且方向一致
+                m_pointCloudLayer->drawLocal(&painter);
+                painter.restore();
+                continue; // 跳过默认绘制
+            }
             layer->draw(&painter);
         }
     }
@@ -414,12 +516,35 @@ void MonitorWidget::mousePressEvent(QMouseEvent *event)
         return;
     }
 
+    if (m_reloLayer->isVisible())
+    {
+        QPointF worldPos = (event->localPos() - m_offset) / m_scale;
+
+        if (m_isRelocating)
+        {
+            if (m_reloLayer->isHitSmallCircle(worldPos))
+            {
+                m_isDraggingSmall = true;
+                return;
+            }
+            else if (m_reloLayer->isHitBigCircle(worldPos))
+            {
+                m_isDraggingBig = true;
+                // 计算偏移量：记录从圆心到点击点的向量
+                m_dragOffset = m_reloLayer->pos() - worldPos;
+                return;
+            }
+        }
+    }
+
     if (event->button() == Qt::LeftButton)
     {
         m_lastMousePos = event->localPos();
 
         checkPointClick(event->localPos());
     }
+
+    m_lastMousePos = event->localPos();
 }
 
 void MonitorWidget::mouseMoveEvent(QMouseEvent *event)
@@ -431,14 +556,40 @@ void MonitorWidget::mouseMoveEvent(QMouseEvent *event)
     if (!isInDrawingArea(event->localPos()))
         return;
 
-    if (event->buttons() & Qt::LeftButton)
+    QPointF worldPos = (event->localPos() - m_offset) / m_scale;
+
+    if (m_isDraggingSmall)
     {
-        QPointF currentPos = event->localPos();
-        QPointF delta = currentPos - m_lastMousePos;
-        m_offset += delta;
-        m_lastMousePos = currentPos;
+        m_reloLayer->updateAngle(worldPos);
+        m_agvLayer->updatePose(m_reloLayer->pos().x() * 1000,
+                               -m_reloLayer->pos().y() * 1000,
+                               m_reloLayer->getAngle() * 1000);
         update();
     }
+    else if (m_isDraggingBig)
+    {
+        m_reloLayer->setPos(worldPos + m_dragOffset);
+        m_agvLayer->updatePose(m_reloLayer->pos().x() * 1000,
+                               -m_reloLayer->pos().y() * 1000,
+                               m_reloLayer->getAngle() * 1000);
+        update();
+    }
+    else
+    {
+        // 原有的地图平移逻辑...
+        if (event->buttons() & Qt::LeftButton)
+        {
+            m_offset += (event->localPos() - m_lastMousePos);
+            m_lastMousePos = event->localPos();
+            update();
+        }
+    }
+}
+
+void MonitorWidget::mouseReleaseEvent(QMouseEvent *event)
+{
+    m_isDraggingSmall = false;
+    m_isDraggingBig = false;
 }
 
 // 鼠标交互：缩放
@@ -484,6 +635,22 @@ void MonitorWidget::wheelEvent(QWheelEvent *event)
 // 事件分发入口
 bool MonitorWidget::event(QEvent *event)
 {
+    if (event->type() == QEvent::TouchBegin)
+    {
+        QTouchEvent *te = static_cast<QTouchEvent *>(event);
+        if (!te->touchPoints().isEmpty())
+        {
+            QPoint p = te->touchPoints().first().pos().toPoint();
+            // 检查当前显示的按钮是否包含触摸点
+            bool onBtn = (m_reloBtn->isVisible() && m_reloBtn->geometry().contains(p)) ||
+                         (m_confirmBtn->isVisible() && m_confirmBtn->geometry().contains(p)) ||
+                         (m_cancelBtn->isVisible() && m_cancelBtn->geometry().contains(p));
+
+            if (onBtn)
+                return QWidget::event(event);
+        }
+    }
+
     // 拦截触摸事件进行分发判定
     if (event->type() == QEvent::TouchBegin ||
         event->type() == QEvent::TouchUpdate ||
@@ -531,6 +698,27 @@ void MonitorWidget::handleTouchEvent(QTouchEvent *event)
         }
         m_touchActive = true;
 
+        // --- 重定位图层碰撞检测 ---
+        if (points.count() == 1 && m_isRelocating)
+        {
+            QPointF touchPos = points.first().pos();
+            QPointF worldPos = (touchPos - m_offset) / m_scale;
+
+            if (m_reloLayer->isHitSmallCircle(worldPos))
+            {
+                m_isDraggingSmall = true;
+                event->accept();
+                return; // 命中重定位层，拦截后续点位点击判定
+            }
+            else if (m_reloLayer->isHitBigCircle(worldPos))
+            {
+                m_isDraggingBig = true;
+                m_dragOffset = m_reloLayer->pos() - worldPos;
+                event->accept();
+                return;
+            }
+        }
+
         if (points.count() == 1)
         {
 
@@ -550,9 +738,38 @@ void MonitorWidget::handleTouchEvent(QTouchEvent *event)
 
         if (event->type() == QEvent::TouchUpdate)
         {
-            QPointF delta = currentPos - lastPos;
-            m_offset += delta;
-            update();
+            // --- 新增：处理重定位拖拽 ---
+            if (m_isDraggingSmall || m_isDraggingBig)
+            {
+                QPointF worldPos = (currentPos - m_offset) / m_scale;
+                if (m_isDraggingSmall)
+                {
+                    m_reloLayer->updateAngle(worldPos);
+                }
+                else if (m_isDraggingBig)
+                {
+                    m_reloLayer->setPos(worldPos + m_dragOffset);
+                }
+                // 同步更新 AGV 图层位姿
+                m_agvLayer->updatePose(m_reloLayer->pos().x() * 1000,
+                                       -m_reloLayer->pos().y() * 1000,
+                                       m_reloLayer->getAngle() * 1000);
+                update();
+            }
+            else
+            {
+                // 原有的地图平移逻辑
+                QPointF delta = currentPos - lastPos;
+                m_offset += delta;
+                update();
+            }
+        }
+
+        if (event->type() == QEvent::TouchEnd || event->type() == QEvent::TouchCancel)
+        {
+            m_isDraggingSmall = false;
+            m_isDraggingBig = false;
+            m_touchActive = false;
         }
     }
     // --- 双指缩放 + 平移 ---

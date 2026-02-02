@@ -2,6 +2,8 @@
 #include <QDebug>
 #include <cmath>
 #include <QDateTime>
+#include <QtMath>
+#include <QJsonArray>
 
 RosBridgeClient::RosBridgeClient(QObject *parent) : QObject(parent), m_webSocket(nullptr)
 {
@@ -124,6 +126,69 @@ void RosBridgeClient::doReconnect()
     }
 }
 
+// 发布重定位
+void RosBridgeClient::setInitialPose(const QPointF &pos, double angle)
+{
+    qDebug() << "Enter setInitialPose";
+    if (!m_webSocket || !m_webSocket->isValid()) {
+        qWarning() << "RosBridge: Cannot set pose, socket not connected.";
+        return;
+    }
+
+    // 1. 计算四元数 (绕Z轴旋转)
+    double qz = std::sin(angle / 2.0);
+    double qw = std::cos(angle / 2.0);
+
+    // 2. 构造 ROS 消息体 (PoseWithCovarianceStamped 格式)
+    QJsonObject msg;
+
+    // Header
+    QJsonObject header;
+    header["frame_id"] = "map"; // 通常重定位是在 map 坐标系下
+    msg["header"] = header;
+
+    // Pose
+    QJsonObject pose;
+    QJsonObject poseInner;
+    
+    // Position
+    QJsonObject position;
+    position["x"] = pos.x();
+    position["y"] = pos.y();
+    position["z"] = 0.0;
+    poseInner["position"] = position;
+
+    // Orientation (Quaternion)
+    QJsonObject orientation;
+    orientation["x"] = 0.0;
+    orientation["y"] = 0.0;
+    orientation["z"] = qz;
+    orientation["w"] = qw;
+    poseInner["orientation"] = orientation;
+
+    pose["pose"] = poseInner;
+
+    // Covariance (标准重定位通常需要一个协方差矩阵，ROS 默认 36 个 0 即可)
+    QJsonArray covariance;
+    for(int i = 0; i < 36; ++i) covariance.append(0.0);
+    pose["covariance"] = covariance;
+
+    msg["pose"] = pose;
+
+    // 3. 构造 ROSBridge 协议外壳
+    QJsonObject publishOp;
+    publishOp["op"] = "publish";
+    publishOp["topic"] = "/baseinipose"; // 对应你要求的 topic
+    publishOp["msg"] = msg;
+
+    // 4. 发送
+    QJsonDocument doc(publishOp);
+    m_webSocket->sendTextMessage(doc.toJson(QJsonDocument::Compact));
+    
+    qDebug() << "RosBridge: Sent initial pose x:" << pos.x() << " y:" << pos.y() << " yaw:" << angle;
+}
+
+// 订阅
 void RosBridgeClient::subscribe(const QString &topic, const QString &type)
 {
     if (m_webSocket)
