@@ -1,36 +1,49 @@
 #ifndef MONITORWIDGET_H
 #define MONITORWIDGET_H
 
-#include "BaseDisplayWidget.h" // 1. 包含基类
+#include "BaseDisplayWidget.h" 
 #include <QImage>
 #include <QVector>
 #include <QPointF>
 #include <QTouchEvent>
 #include <QLabel>
 #include <QPushButton>
-#include "layers/BaseLayer.h"
-#include "layers/GridLayer.h"
-#include "layers/MapLayer.h"
-#include "layers/AgvLayer.h"
-#include "layers/PointPathLayer.h"
-#include "layers/PointCloudLayer.h"
-#include "utils/ConfigManager.h"
-#include "layers/RelocationLayer.h"
-#include "AgvData.h"
+#include <QMap>
+#include <QJsonObject>
 
-class MonitorWidget : public BaseDisplayWidget // 2. 继承基类
+// 前向声明，减少头文件耦合
+class BaseLayer;
+class GridLayer;
+class MapLayer;
+class AgvLayer;
+class PointPathLayer;
+class PointCloudLayer;
+class RelocationLayer;
+class MapDataManager;
+class MonitorInteractionHandler;
+class RelocationController;
+class ConfigManager;
+class AgvData;
+
+class MonitorWidget : public BaseDisplayWidget 
 {
     Q_OBJECT
+    // 允许交互处理器直接操作位姿变量 m_scale, m_offset 等
+    friend class MonitorInteractionHandler;
+    friend class RelocationController;
+
 public:
     explicit MonitorWidget(QWidget *parent = nullptr);
     ~MonitorWidget();
 
+    // 地图与视图控制接口
     void loadLocalMap(const QString &imagePath, double originX, double originY);
     void loadMapJson(const QString &path);
     void centerOnAgv();
     void setMapId(int id);
 
 protected:
+    // Qt 事件重写
     void paintEvent(QPaintEvent *event) override;
     void wheelEvent(QWheelEvent *event) override;
     void mousePressEvent(QMouseEvent *event) override;
@@ -40,68 +53,64 @@ protected:
     void showEvent(QShowEvent *event) override;
 
 signals:
-    void pointClicked(int id); // 点击点位时发出的信号
+    void pointClicked(int id); 
     void baseIniPose(const QPointF &pos, double angle);
-
-private slots:
-    void updatePointCloud(const QVector<QPointF> &points);
-    void handleMapName(int mapId);
-    void handleMapJsonName(int mapId);
-    void updateAgvState(const QVector<int> &agvState);
-    void startRelocation();
-    void finishRelocation();
-    void cancelRelocation();
-    void exitRelocationMode();
 
 public slots:
     void handleMapIdChanged(int mapId);
 
+private slots:
+    // 业务回调与按钮逻辑
+    void updatePointCloud(const QVector<QPointF> &points);
+    void updateAgvState(const QVector<int> &agvState);
+
 private:
-    void handleTouchEvent(QTouchEvent *event);
+    // 内部私有辅助逻辑
+    void handleMapName(int mapId);
+    void handleMapJsonName(int mapId);
     bool isInDrawingArea(const QPointF &pos);
     void checkPointClick(const QPointF &screenPos);
 
 private:
-    ConfigManager *cfg = ConfigManager::instance();
-    AgvData *agvData = AgvData::instance();
+    // 剥离出的功能模块指针
+    MapDataManager *m_mapDataManager = nullptr;
+    MonitorInteractionHandler *m_interactionHandler = nullptr;
+    RelocationController *m_reloController = nullptr;
 
-    QLabel *m_mapIdLabel;
+    // UI 组件
+    QLabel *m_mapIdLabel = nullptr;
+    QPushButton *m_reloBtn = nullptr;
+    QPushButton *m_confirmBtn = nullptr;
+    QPushButton *m_cancelBtn = nullptr;
+
+    // 视图变换变量
+    double m_scale = 50.0;
+    QPointF m_offset = QPointF(400, 300);
+
+    // 地图资源状态
     QPixmap m_mapPixmap;
     double m_mapOriginX = 0;
     double m_mapOriginY = 0;
     double m_mapResolution = 0.05;
-    bool m_hasMap = false;
     QString m_mapName = "";
     QString m_mapJsonName = "";
+
+    // AGV 状态缓存
     int m_agvX = 0;
     int m_agvY = 0;
     int m_agvAngle = 0;
 
-    QVector<QPointF> m_pointCloud;
-
-    double m_scale = 50.0;
-    QPointF m_offset = QPointF(400, 300);
-    QPointF m_lastMousePos;
+    // 交互状态
     bool m_touchActive = false;
+    bool m_isRelocating = false; 
 
+    // 图层管理
     QList<BaseLayer *> m_layers;
-    // 为了方便传递数据，保留具体的指针引用
-    MapLayer *m_mapLayer;
-    AgvLayer *m_agvLayer;
-    PointPathLayer *m_pointPathLayer;
-    PointCloudLayer *m_pointCloudLayer;
-    RelocationLayer *m_reloLayer;
-    bool m_isDraggingBig = false;
-    bool m_isDraggingSmall = false;
-    bool m_isRelocating = false; // 标记是否处于重定位模式
-    QPointF m_dragOffset;        // 记录拖拽偏移
-
-    // 缓存点位全局变量：Key 为点位 ID，Value 为该点位的完整 JSON 对象
-    QMap<int, QJsonObject> m_pointMap;
-
-    QPushButton *m_reloBtn;    // 重定位按钮
-    QPushButton *m_confirmBtn; // 确认按钮
-    QPushButton *m_cancelBtn;  // 取消按钮
+    MapLayer *m_mapLayer = nullptr;
+    AgvLayer *m_agvLayer = nullptr;
+    PointPathLayer *m_pointPathLayer = nullptr;
+    PointCloudLayer *m_pointCloudLayer = nullptr;
+    RelocationLayer *m_reloLayer = nullptr;
 };
 
 #endif // MONITORWIDGET_H

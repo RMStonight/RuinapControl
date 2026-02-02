@@ -20,6 +20,9 @@ set(SOURCES
     src/utils/CommunicationWsClient.cpp
     src/utils/NetworkCheckThread.cpp
     src/utils/AgvData.cpp
+    src/monitor/MapDataManager.cpp
+    src/monitor/MonitorInteractionHandler.cpp
+    src/monitor/RelocationController.cpp
     src/MainWindow.cpp
     src/components/TopHeaderWidget.cpp
     src/components/MainContentWidget.cpp
@@ -37,6 +40,9 @@ set(SOURCES
     include/utils/CommunicationWsClient.h
     include/utils/NetworkCheckThread.h
     include/utils/AgvData.h
+    include/monitor/MapDataManager.h
+    include/monitor/MonitorInteractionHandler.h
+    include/monitor/RelocationController.h
     include/MainWindow.h
     include/components/TopHeaderWidget.h
     include/components/MainContentWidget.h

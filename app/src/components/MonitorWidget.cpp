@@ -1,5 +1,16 @@
 #include "components/MonitorWidget.h"
 #include "utils/RosBridgeClient.h"
+#include "utils/ConfigManager.h"
+#include "AgvData.h"
+#include "monitor/MapDataManager.h"
+#include "monitor/MonitorInteractionHandler.h"
+#include "monitor/RelocationController.h"
+#include "layers/GridLayer.h"
+#include "layers/MapLayer.h"
+#include "layers/AgvLayer.h"
+#include "layers/PointPathLayer.h"
+#include "layers/PointCloudLayer.h"
+#include "layers/RelocationLayer.h"
 #include <QPainter>
 #include <QWheelEvent>
 #include <QMouseEvent>
@@ -16,11 +27,14 @@ MonitorWidget::MonitorWidget(QWidget *parent) : BaseDisplayWidget(parent)
     this->setStyleSheet("background-color: #ffffff;");
     setAttribute(Qt::WA_AcceptTouchEvents);
 
-    // 初始化左上角 Label ---
-    m_mapIdLabel = new QLabel(this); // 指定 this 为父对象，使其依附于当前窗口
-    m_mapIdLabel->setText("地图编号: -100");
+    // 初始化功能模块
+    m_mapDataManager = new MapDataManager(this);
+    m_interactionHandler = new MonitorInteractionHandler(this);
+    m_reloController = new RelocationController(this);
 
-    // 设置样式：白色文字，半透明黑色背景(防止地图太亮看不清文字)，字号加大，圆角
+    // 初始化左上角地图信息 Label
+    m_mapIdLabel = new QLabel(this);
+    m_mapIdLabel->setText("地图编号: -100");
     m_mapIdLabel->setStyleSheet(
         "color: white;"
         "font-size: 16px;"
@@ -28,21 +42,17 @@ MonitorWidget::MonitorWidget(QWidget *parent) : BaseDisplayWidget(parent)
         "background-color: rgba(0, 0, 0, 100);"
         "padding: 6px;"
         "border-radius: 4px;");
-
-    // 根据文字内容自动调整大小
     m_mapIdLabel->adjustSize();
-
-    // 移动到左上角 (x=10, y=10) 留出一点边距
     m_mapIdLabel->move(10, 10);
 
-    // 地图分辨率
-    m_mapResolution = cfg->mapResolution() / 1000.0;
+    // 地图分辨率初始化
+    m_mapResolution = ConfigManager::instance()->mapResolution() / 1000.0;
 
-    // 链接信号
-    connect(agvData, &AgvData::pointCloudDataReady, this, &MonitorWidget::updatePointCloud);
-    connect(agvData, &AgvData::agvStateChanged, this, &MonitorWidget::updateAgvState);
+    // 链接业务信号
+    connect(AgvData::instance(), &AgvData::pointCloudDataReady, this, &MonitorWidget::updatePointCloud);
+    connect(AgvData::instance(), &AgvData::agvStateChanged, this, &MonitorWidget::updateAgvState);
 
-    // 初始化图层（注意顺序：先加入的先画，在底层）
+    // 初始化图层
     m_mapLayer = new MapLayer();
     m_pointPathLayer = new PointPathLayer();
     m_agvLayer = new AgvLayer();
@@ -51,145 +61,69 @@ MonitorWidget::MonitorWidget(QWidget *parent) : BaseDisplayWidget(parent)
 
     m_layers << new GridLayer() << m_mapLayer << m_pointPathLayer << m_agvLayer << m_pointCloudLayer << m_reloLayer;
 
-    // --- 初始化重定位相关按钮 ---
+    // 初始化重定位按钮
     m_reloBtn = new QPushButton("重定位", this);
     m_confirmBtn = new QPushButton("确认", this);
     m_cancelBtn = new QPushButton("取消", this);
 
-    // 设置统一的基础样式（也可以单独设置颜色）
     QString baseStyle = "QPushButton { border-radius: 5px; font-weight: bold; color: white; }";
     m_reloBtn->setStyleSheet(baseStyle + "QPushButton { background-color: #0078d7; }");
-    m_confirmBtn->setStyleSheet(baseStyle + "QPushButton { background-color: #28a745; }"); // 绿色
-    m_cancelBtn->setStyleSheet(baseStyle + "QPushButton { background-color: #dc3545; }");  // 红色
+    m_confirmBtn->setStyleSheet(baseStyle + "QPushButton { background-color: #28a745; }");
+    m_cancelBtn->setStyleSheet(baseStyle + "QPushButton { background-color: #dc3545; }");
 
-    // 设置大小和位置
     m_reloBtn->setFixedSize(80, 40);
     m_confirmBtn->setFixedSize(80, 40);
     m_cancelBtn->setFixedSize(80, 40);
 
     m_reloBtn->move(10, 50);
     m_confirmBtn->move(10, 50);
-    m_cancelBtn->move(100, 50); // 取消按钮放在确认按钮旁边
+    m_cancelBtn->move(100, 50);
 
-    // 初始状态
     m_confirmBtn->hide();
     m_cancelBtn->hide();
     m_reloBtn->show();
 
     // 信号槽连接
-    connect(m_reloBtn, &QPushButton::clicked, this, &MonitorWidget::startRelocation);
-    connect(m_confirmBtn, &QPushButton::clicked, this, &MonitorWidget::finishRelocation);
-    connect(m_cancelBtn, &QPushButton::clicked, this, &MonitorWidget::cancelRelocation);
-    connect(this, &MonitorWidget::baseIniPose, agvData, &AgvData::requestInitialPose);
+    connect(m_reloBtn, &QPushButton::clicked, m_reloController, &RelocationController::start);
+    connect(m_confirmBtn, &QPushButton::clicked, m_reloController, &RelocationController::finish);
+    connect(m_cancelBtn, &QPushButton::clicked, m_reloController, &RelocationController::cancel);
+    connect(this, &MonitorWidget::baseIniPose, AgvData::instance(), &AgvData::requestInitialPose);
 }
 
-// 析构函数中记得退出线程 (如果 MonitorWidget.cpp 没有析构函数，可以加一个)
 MonitorWidget::~MonitorWidget()
 {
 }
 
-// 页面载入时触发
 void MonitorWidget::showEvent(QShowEvent *event)
 {
     QWidget::showEvent(event);
-    // 每次显示界面时，自动归位到小车
-    centerOnAgv();
-
-    // width() 和 height() 返回的是像素值
-    // qDebug() << "MonitorWidget ShowEvent - Width:" << this->width()
-    //          << "Height:" << this->height();
+    centerOnAgv(); // 显示时自动对焦小车
 }
 
-// 进入重定位模式
-void MonitorWidget::startRelocation()
-{
-    m_isRelocating = true;
-    m_reloLayer->setVisible(true);
+// --- 地图与坐标控制逻辑 ---
 
-    // UI 切换
-    m_reloBtn->hide();
-    m_confirmBtn->show();
-    m_cancelBtn->show();
-
-    // 同步位姿
-    QPointF agvPos = m_agvLayer->getPos();
-    double agvAngle = m_agvLayer->getAngle();
-    m_reloLayer->setPos(QPointF(agvPos.x(), -agvPos.y()));
-    m_reloLayer->setAngle(agvAngle);
-    m_pointCloudLayer->lockToLocal(agvPos, agvAngle);
-
-    update();
-}
-
-// 确认重定位
-void MonitorWidget::finishRelocation()
-{
-    qDebug() << "重定位完成:";
-    qDebug() << "ROS坐标 (m): x =" << m_reloLayer->pos().x()
-             << ", y =" << -m_reloLayer->pos().y();
-    qDebug() << "ROS角度 (rad):" << m_reloLayer->getAngle();
-
-    emit baseIniPose(QPointF(m_reloLayer->pos().x(), -m_reloLayer->pos().y()), m_reloLayer->getAngle());
-
-    exitRelocationMode();
-}
-
-// 取消重定位
-void MonitorWidget::cancelRelocation()
-{
-    // 不打印信息，直接退出
-    exitRelocationMode();
-}
-
-// 私有辅助函数：重置状态
-void MonitorWidget::exitRelocationMode()
-{
-    m_isRelocating = false;
-    m_reloLayer->setVisible(false);
-    m_pointCloudLayer->unlock();
-
-    // UI 切回原始状态
-    m_confirmBtn->hide();
-    m_cancelBtn->hide();
-    m_reloBtn->show();
-
-    update();
-}
-
-// 强制视角以 AGV 为中心
 void MonitorWidget::centerOnAgv()
 {
-    // 3. 使用基类的 getDrawingWidth() 计算中心
     int leftSectionWidth = getDrawingWidth();
-
     double centerX = leftSectionWidth / 2.0;
     double centerY = this->height() / 2.0;
 
     double worldX = m_agvX / 1000.0;
     double worldY = -(m_agvY / 1000.0);
 
-    double newOffsetX = centerX - (worldX * m_scale);
-    double newOffsetY = centerY - (worldY * m_scale);
-
-    m_offset = QPointF(newOffsetX, newOffsetY);
+    m_offset = QPointF(centerX - (worldX * m_scale), centerY - (worldY * m_scale));
     update();
 }
 
-// 更新地图编号
 void MonitorWidget::setMapId(int id)
 {
     if (m_mapIdLabel)
     {
-        // 使用 arg() 格式化字符串
         m_mapIdLabel->setText(QString("地图编号: %1").arg(id));
-
-        // [重要] 文字长度改变后，必须重新计算 Label 大小，
-        // 这样半透明背景框才会跟随文字自动伸缩。
         m_mapIdLabel->adjustSize();
     }
 }
 
-// 地图编号更新
 void MonitorWidget::handleMapIdChanged(int mapId)
 {
     setMapId(mapId);
@@ -197,234 +131,84 @@ void MonitorWidget::handleMapIdChanged(int mapId)
     handleMapJsonName(mapId);
 }
 
-// 更新 scan
+void MonitorWidget::handleMapName(int mapId)
+{
+    QString mapUrl = ConfigManager::instance()->mapPngFolder();
+    if (!mapUrl.endsWith("/"))
+        mapUrl += "/";
+
+    QString newMapName = QString::number(mapId) + ".png";
+    if (m_mapName != newMapName)
+    {
+        loadLocalMap(mapUrl + newMapName, 0, 0);
+        m_mapName = newMapName;
+    }
+}
+
+void MonitorWidget::handleMapJsonName(int mapId)
+{
+    QString mapJsonUrl = ConfigManager::instance()->mapJsonFolder();
+    if (!mapJsonUrl.endsWith("/"))
+        mapJsonUrl += "/";
+
+    QString newMapJsonName = "points_and_path_" + QString::number(mapId) + ".json";
+    if (m_mapJsonName != newMapJsonName)
+    {
+        loadMapJson(mapJsonUrl + newMapJsonName);
+        m_mapJsonName = newMapJsonName;
+    }
+}
+
+void MonitorWidget::loadMapJson(const QString &path)
+{
+    QVector<MapPointData> pointsList;
+    QVector<MapPathData> pathsList;
+
+    // 委托给 DataManager 处理解析
+    if (m_mapDataManager->parseMapJson(path, pointsList, pathsList))
+    {
+        m_pointPathLayer->updateData(pointsList, pathsList);
+        update();
+    }
+}
+
+void MonitorWidget::loadLocalMap(const QString &imagePath, double originX, double originY)
+{
+    QImage img(imagePath);
+    if (img.isNull())
+        return;
+
+    m_mapPixmap = QPixmap::fromImage(img);
+    m_mapOriginX = originX;
+    m_mapOriginY = originY;
+
+    if (m_mapLayer)
+    {
+        m_mapLayer->updateMap(m_mapPixmap, m_mapResolution, m_mapOriginX, m_mapOriginY);
+    }
+    update();
+}
+
 void MonitorWidget::updatePointCloud(const QVector<QPointF> &points)
 {
     m_pointCloudLayer->updatePoints(points);
     update();
 }
 
-// 处理 mapName
-void MonitorWidget::handleMapName(int mapId)
-{
-    // 地图路径前缀
-    QString mapUrl = cfg->mapPngFolder();
-    if (!mapUrl.endsWith("/"))
-    {
-        mapUrl += "/";
-    }
-    QString newMapName = QString::number(mapId) + ".png";
-    // 判断是否需要切换地图
-    if (m_mapName != newMapName)
-    {
-        loadLocalMap(mapUrl + newMapName, 0, 0);
-        qDebug() << "地图切换" << m_mapName << " -> " << newMapName << ", 当前地图分辨率: " << m_mapResolution;
-        m_mapName = newMapName;
-    }
-}
-
-// 处理 mapName
-void MonitorWidget::handleMapJsonName(int mapId)
-{
-    // 地图路径前缀
-    QString mapJsonUrl = cfg->mapJsonFolder();
-    if (!mapJsonUrl.endsWith("/"))
-    {
-        mapJsonUrl += "/";
-    }
-    QString newMapJsonName = "points_and_path_" + QString::number(mapId) + ".json";
-    // 判断是否需要切换地图
-    if (m_mapJsonName != newMapJsonName)
-    {
-        loadMapJson(mapJsonUrl + newMapJsonName);
-        qDebug() << "地图切换" << m_mapJsonName << " -> " << newMapJsonName;
-        m_mapJsonName = newMapJsonName;
-    }
-}
-
-// 处理 agvState
 void MonitorWidget::updateAgvState(const QVector<int> &agvState)
 {
     if (m_isRelocating)
-    {
         return;
-    }
 
     m_agvX = agvState[1];
     m_agvY = agvState[2];
     m_agvAngle = agvState[3];
 
-    m_agvLayer->updatePose(agvState[1], agvState[2], agvState[3]);
-
-    // 触发界面重绘
-    update();
-
-    // qDebug() << "x: " << m_agvX << ", y: " << m_agvY << ", angle: " << m_agvAngle;
-}
-
-// 载入 map 的本地 json 文件
-void MonitorWidget::loadMapJson(const QString &path)
-{
-    // 1. 读取文件内容
-    QFile file(path);
-    if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
-    {
-        qWarning() << "无法打开JSON文件:" << path;
-        return;
-    }
-
-    QByteArray jsonData = file.readAll();
-    file.close();
-
-    // 2. 解析 JSON
-    QJsonParseError parseError;
-    QJsonDocument doc = QJsonDocument::fromJson(jsonData, &parseError);
-
-    if (parseError.error != QJsonParseError::NoError)
-    {
-        qWarning() << "JSON 解析错误:" << parseError.errorString();
-        return;
-    }
-
-    // 3. 提取数据
-    if (doc.isObject())
-    {
-        QJsonObject jsonObj = doc.object();
-
-        // 假设 JSON 结构中有一个名为 "points" 的数组
-        // 例如: { "points": [ {"x": 1.2, "y": 3.4}, {"x": 5.0, "y": 6.0} ] }
-        if (doc.isObject())
-        {
-            QJsonObject jsonObj = doc.object();
-
-            if (jsonObj.contains("point") && jsonObj["point"].isArray())
-            {
-                QJsonArray pointsArray = jsonObj["point"].toArray();
-
-                // 1. 第一轮遍历：缓存点位到 m_pointMap
-                m_pointMap.clear();
-                for (int i = 0; i < pointsArray.size(); ++i)
-                {
-                    QJsonObject pObj = pointsArray[i].toObject();
-                    m_pointMap.insert(pObj.value("id").toInt(), pObj);
-                }
-
-                // 2. 第二轮遍历：构造显示用的点和线
-                QVector<MapPointData> pointsList;
-                QVector<MapPathData> pathsList;
-
-                for (int i = 0; i < pointsArray.size(); ++i)
-                {
-                    QJsonObject pointObj = pointsArray[i].toObject();
-                    int startId = pointObj.value("id").toInt();
-                    QPointF startPos(pointObj.value("x").toDouble() / 1000.0,
-                                     pointObj.value("y").toDouble() / 1000.0);
-
-                    // --- 处理点位数据 ---
-                    MapPointData pData;
-                    pData.pos = startPos;
-                    pData.id = QString::number(startId);
-
-                    bool isCharge = pointObj.value("charge").toBool();
-                    bool isAct = pointObj.value("loading").toBool() || pointObj.value("unloading").toBool();
-
-                    // --- 颜色分配逻辑 ---
-                    if (isCharge)
-                    {
-                        pData.color = QColor(0, 120, 215, 180); // 蓝色
-                    }
-                    else if (isAct)
-                    {
-                        pData.color = QColor(215, 120, 0, 180); // 棕色
-                    }
-                    else
-                    {
-                        pData.color = QColor(255, 0, 0, 180); // 默认红
-                    }
-
-                    pointsList.append(pData);
-
-                    // --- 处理路径数据 (targets) ---
-                    if (pointObj.contains("targets") && pointObj["targets"].isArray())
-                    {
-                        QJsonArray targetsArray = pointObj["targets"].toArray();
-                        for (int j = 0; j < targetsArray.size(); ++j)
-                        {
-                            QJsonObject tObj = targetsArray[j].toObject();
-                            int endId = tObj.value("id").toInt();
-
-                            // 通过缓存查找到目标点坐标
-                            if (m_pointMap.contains(endId))
-                            {
-                                QJsonObject targetPoint = m_pointMap.value(endId);
-                                MapPathData pathData;
-                                pathData.start = startPos;
-                                pathData.end = QPointF(targetPoint.value("x").toDouble() / 1000.0,
-                                                       targetPoint.value("y").toDouble() / 1000.0);
-                                pathData.type = tObj.value("type").toInt();
-
-                                // 解析控制点 (mm -> m)
-                                QJsonObject c1 = tObj.value("ctl_1").toObject();
-                                pathData.ctl1 = QPointF(c1.value("x").toDouble() / 1000.0,
-                                                        c1.value("y").toDouble() / 1000.0);
-
-                                QJsonObject c2 = tObj.value("ctl_2").toObject();
-                                pathData.ctl2 = QPointF(c2.value("x").toDouble() / 1000.0,
-                                                        c2.value("y").toDouble() / 1000.0);
-
-                                pathsList.append(pathData);
-                            }
-                        }
-                    }
-                }
-
-                if (m_pointPathLayer)
-                {
-                    m_pointPathLayer->updateData(pointsList, pathsList);
-                }
-            }
-            update();
-        }
-        else
-        {
-            qWarning() << "JSON 中未找到 'points' 数组";
-        }
-    }
-
-    // 4. 通知重绘（如果解析出的数据影响视觉）
+    m_agvLayer->updatePose(m_agvX, m_agvY, m_agvAngle);
     update();
 }
 
-// 载入 map 的本地 png 格式文件
-void MonitorWidget::loadLocalMap(const QString &imagePath, double originX, double originY)
-{
-    // 加载图片
-    QImage img(imagePath);
-    if (img.isNull())
-    {
-        qWarning() << "Failed to load map from:" << imagePath;
-        return;
-    }
-
-    // 赋值给成员变量 (这些变量原本是在 updateMap 中赋值的)
-    // 建议：直接转为 QPixmap 以优化渲染性能 (参考之前的优化建议)
-    m_mapPixmap = QPixmap::fromImage(img);
-
-    m_mapOriginX = originX;
-    m_mapOriginY = originY;
-    m_hasMap = true;
-
-    // --- 同步给图层 ---
-    if (m_mapLayer)
-    {
-        m_mapLayer->updateMap(m_mapPixmap, m_mapResolution, m_mapOriginX, m_mapOriginY);
-    }
-
-    // 3. 触发重绘
-    update();
-
-    qDebug() << "Local map loaded. Size:" << img.size() << "Origin:" << originX << originY;
-}
+// --- 事件与绘制逻辑 ---
 
 void MonitorWidget::paintEvent(QPaintEvent *event)
 {
@@ -432,59 +216,44 @@ void MonitorWidget::paintEvent(QPaintEvent *event)
     QPainter painter(this);
     painter.setRenderHint(QPainter::Antialiasing, true);
 
-    // 1. 绘制背景（保持原样）
     int leftSectionWidth = getDrawingWidth();
     painter.fillRect(0, 0, leftSectionWidth, height(), QColor("#ffffff"));
 
-    // 2. 视图变换 (View Transform) - 这一步是所有图层的“父级坐标系”
-    // 确保缩放和平移逻辑与原来完全一致
+    // 应用交互处理器计算出的视口变换
     painter.translate(m_offset);
     painter.scale(m_scale, m_scale);
 
-    // 3. 遍历图层执行绘制
-    // 顺序：GridLayer -> MapLayer -> RobotLayer (AgvLayer)
     for (BaseLayer *layer : m_layers)
     {
         if (layer && layer->isVisible())
         {
-            // 如果当前是重定位模式，且正在画点云层，我们需要特殊处理坐标系
             if (m_isRelocating && layer == m_pointCloudLayer)
             {
                 painter.save();
-                // 应用与 AgvLayer 相同的变换：
                 painter.translate(m_reloLayer->pos().x(), m_reloLayer->pos().y());
                 painter.rotate(-qRadiansToDegrees(m_reloLayer->getAngle()));
-                // 此时 painter 的原点已经在重定位的小车中心，且方向一致
                 m_pointCloudLayer->drawLocal(&painter);
                 painter.restore();
-                continue; // 跳过默认绘制
+                continue;
             }
             layer->draw(&painter);
         }
     }
 }
 
-// 判定坐标是否在左侧绘图区
 bool MonitorWidget::isInDrawingArea(const QPointF &pos)
 {
     return pos.x() < getDrawingWidth();
 }
 
-// 判断是否有点位被点击
 void MonitorWidget::checkPointClick(const QPointF &screenPos)
 {
-    // 1. 屏幕坐标转世界坐标
-    // World = (Screen - Offset) / Scale
     QPointF clickWorldPos = (screenPos - m_offset) / m_scale;
-
-    // 注意：绘图时使用了 -y (在 centerOnAgv 等处体现)，所以这里反算 y 时需要变号
     double worldX = clickWorldPos.x();
     double worldY = -clickWorldPos.y();
 
-    // 2. 遍历缓存的点位进行碰撞检测
-    double clickRadius = m_pointPathLayer->radius;
-
-    QMapIterator<int, QJsonObject> it(m_pointMap);
+    const QMap<int, QJsonObject> &pointMap = m_mapDataManager->getPointMap();
+    QMapIterator<int, QJsonObject> it(pointMap);
     while (it.hasNext())
     {
         it.next();
@@ -492,328 +261,47 @@ void MonitorWidget::checkPointClick(const QPointF &screenPos)
         double px = obj.value("x").toDouble() / 1000.0;
         double py = obj.value("y").toDouble() / 1000.0;
 
-        double dist = QLineF(worldX, worldY, px, py).length();
-        if (dist < clickRadius)
+        if (QLineF(worldX, worldY, px, py).length() < m_pointPathLayer->radius)
         {
-            int clickedId = it.key();
-            qDebug() << "触摸点位被点击，ID:" << clickedId;
-            emit pointClicked(clickedId);
+            emit pointClicked(it.key());
             break;
         }
     }
 }
 
-// 鼠标交互：平移
-void MonitorWidget::mousePressEvent(QMouseEvent *event)
-{
-    if (m_touchActive)
-        return;
+// 事件转发至 InteractionHandler
+void MonitorWidget::mousePressEvent(QMouseEvent *event) { m_interactionHandler->handleMousePress(event); }
+void MonitorWidget::mouseMoveEvent(QMouseEvent *event) { m_interactionHandler->handleMouseMove(event); }
+void MonitorWidget::mouseReleaseEvent(QMouseEvent *event) { m_interactionHandler->handleMouseRelease(event); }
+void MonitorWidget::wheelEvent(QWheelEvent *event) { m_interactionHandler->handleWheel(event); }
 
-    // --- 新增判定：如果点击位置在右侧面板区域，直接忽略 ---
-    if (!isInDrawingArea(event->localPos()))
-    {
-        event->ignore(); // 让事件正常传递给子控件 OptionalInfoWidget
-        return;
-    }
-
-    if (m_reloLayer->isVisible())
-    {
-        QPointF worldPos = (event->localPos() - m_offset) / m_scale;
-
-        if (m_isRelocating)
-        {
-            if (m_reloLayer->isHitSmallCircle(worldPos))
-            {
-                m_isDraggingSmall = true;
-                return;
-            }
-            else if (m_reloLayer->isHitBigCircle(worldPos))
-            {
-                m_isDraggingBig = true;
-                // 计算偏移量：记录从圆心到点击点的向量
-                m_dragOffset = m_reloLayer->pos() - worldPos;
-                return;
-            }
-        }
-    }
-
-    if (event->button() == Qt::LeftButton)
-    {
-        m_lastMousePos = event->localPos();
-
-        checkPointClick(event->localPos());
-    }
-
-    m_lastMousePos = event->localPos();
-}
-
-void MonitorWidget::mouseMoveEvent(QMouseEvent *event)
-{
-    if (m_touchActive)
-        return;
-
-    // --- 新增判定：仅在绘图区处理移动 ---
-    if (!isInDrawingArea(event->localPos()))
-        return;
-
-    QPointF worldPos = (event->localPos() - m_offset) / m_scale;
-
-    if (m_isDraggingSmall)
-    {
-        m_reloLayer->updateAngle(worldPos);
-        m_agvLayer->updatePose(m_reloLayer->pos().x() * 1000,
-                               -m_reloLayer->pos().y() * 1000,
-                               m_reloLayer->getAngle() * 1000);
-        update();
-    }
-    else if (m_isDraggingBig)
-    {
-        m_reloLayer->setPos(worldPos + m_dragOffset);
-        m_agvLayer->updatePose(m_reloLayer->pos().x() * 1000,
-                               -m_reloLayer->pos().y() * 1000,
-                               m_reloLayer->getAngle() * 1000);
-        update();
-    }
-    else
-    {
-        // 原有的地图平移逻辑...
-        if (event->buttons() & Qt::LeftButton)
-        {
-            m_offset += (event->localPos() - m_lastMousePos);
-            m_lastMousePos = event->localPos();
-            update();
-        }
-    }
-}
-
-void MonitorWidget::mouseReleaseEvent(QMouseEvent *event)
-{
-    m_isDraggingSmall = false;
-    m_isDraggingBig = false;
-}
-
-// 鼠标交互：缩放
-void MonitorWidget::wheelEvent(QWheelEvent *event)
-{
-    // --- 新增判定：如果鼠标悬停在右侧面板上，不触发地图缩放 ---
-    if (!isInDrawingArea(event->position()))
-    {
-        return;
-    }
-
-    // --- 获取鼠标在屏幕上的当前位置 ---
-    QPointF mousePos = QPointF(event->position());
-
-    // --- 计算缩放前的“世界坐标” ---
-    // (相对于地图原点/AGV的逻辑坐标)
-    QPointF worldPosBeforeZoom = (mousePos - m_offset) / m_scale;
-
-    // --- 计算缩放系数 ---
-    double factor = 1.1;
-    if (event->angleDelta().y() < 0)
-        factor = 1.0 / factor;
-
-    // 限制缩放范围
-    double newScale = m_scale * factor;
-    if (newScale < 1.0)
-        newScale = 1.0;
-    if (newScale > 500.0)
-        newScale = 500.0;
-
-    // 更新缩放
-    m_scale = newScale;
-
-    // --- 反向计算新的 Offset ---
-    // 核心逻辑：保持鼠标下的世界坐标不变
-    // mousePos = World * NewScale + NewOffset
-    // => NewOffset = mousePos - (World * NewScale)
-    m_offset = mousePos - (worldPosBeforeZoom * m_scale);
-
-    update();
-}
-
-// 事件分发入口
 bool MonitorWidget::event(QEvent *event)
 {
+    // 处理触摸事件的按钮拦截
     if (event->type() == QEvent::TouchBegin)
     {
         QTouchEvent *te = static_cast<QTouchEvent *>(event);
         if (!te->touchPoints().isEmpty())
         {
             QPoint p = te->touchPoints().first().pos().toPoint();
-            // 检查当前显示的按钮是否包含触摸点
             bool onBtn = (m_reloBtn->isVisible() && m_reloBtn->geometry().contains(p)) ||
                          (m_confirmBtn->isVisible() && m_confirmBtn->geometry().contains(p)) ||
                          (m_cancelBtn->isVisible() && m_cancelBtn->geometry().contains(p));
-
             if (onBtn)
                 return QWidget::event(event);
         }
     }
 
-    // 拦截触摸事件进行分发判定
-    if (event->type() == QEvent::TouchBegin ||
-        event->type() == QEvent::TouchUpdate ||
-        event->type() == QEvent::TouchEnd ||
-        event->type() == QEvent::TouchCancel)
+    if (event->type() >= QEvent::TouchBegin && event->type() <= QEvent::TouchCancel)
     {
         QTouchEvent *touchEvent = static_cast<QTouchEvent *>(event);
-        const QList<QTouchEvent::TouchPoint> &points = touchEvent->touchPoints();
-
-        if (!points.isEmpty())
+        if (!touchEvent->touchPoints().isEmpty() && !isInDrawingArea(touchEvent->touchPoints().first().pos()))
         {
-            // --- 核心修改：判定触摸起始点 ---
-            // 如果触摸点不在左侧绘图区，我们不处理它，直接交给 QWidget 默认处理
-            // 这样 QWidget 会把触摸事件转换为滚动事件或直接发给 OptionalInfoWidget
-            if (!isInDrawingArea(points.first().pos()))
-            {
-                return QWidget::event(event);
-            }
+            return QWidget::event(event);
         }
-
-        // 如果在绘图区，执行原有的地图交互逻辑
-        handleTouchEvent(touchEvent);
+        m_interactionHandler->handleTouch(touchEvent);
         return true;
     }
 
-    // 其他事件（如鼠标、绘图等）交给父类默认处理
-    return QWidget::event(event);
-}
-
-// 原来的 touchEvent 改名为 handleTouchEvent，逻辑完全不变
-void MonitorWidget::handleTouchEvent(QTouchEvent *event)
-{
-    // 获取触摸点列表
-    const QList<QTouchEvent::TouchPoint> &points = event->touchPoints();
-    if (points.isEmpty())
-        return;
-
-    // 状态标记
-    if (event->type() == QEvent::TouchBegin)
-    {
-        if (!isInDrawingArea(points.first().pos()))
-        {
-            m_touchActive = false; // 标记为非绘图区触摸
-            return;
-        }
-        m_touchActive = true;
-
-        // --- 重定位图层碰撞检测 ---
-        if (points.count() == 1 && m_isRelocating)
-        {
-            QPointF touchPos = points.first().pos();
-            QPointF worldPos = (touchPos - m_offset) / m_scale;
-
-            if (m_reloLayer->isHitSmallCircle(worldPos))
-            {
-                m_isDraggingSmall = true;
-                event->accept();
-                return; // 命中重定位层，拦截后续点位点击判定
-            }
-            else if (m_reloLayer->isHitBigCircle(worldPos))
-            {
-                m_isDraggingBig = true;
-                m_dragOffset = m_reloLayer->pos() - worldPos;
-                event->accept();
-                return;
-            }
-        }
-
-        if (points.count() == 1)
-        {
-
-            checkPointClick(points.first().pos());
-        }
-    }
-
-    if (!m_touchActive)
-        return; // 如果不是从绘图区开始的触摸，直接跳过
-
-    // --- 单指平移 ---
-    if (points.count() == 1)
-    {
-
-        QPointF currentPos = points.first().pos();
-        QPointF lastPos = points.first().lastPos();
-
-        if (event->type() == QEvent::TouchUpdate)
-        {
-            // --- 新增：处理重定位拖拽 ---
-            if (m_isDraggingSmall || m_isDraggingBig)
-            {
-                QPointF worldPos = (currentPos - m_offset) / m_scale;
-                if (m_isDraggingSmall)
-                {
-                    m_reloLayer->updateAngle(worldPos);
-                }
-                else if (m_isDraggingBig)
-                {
-                    m_reloLayer->setPos(worldPos + m_dragOffset);
-                }
-                // 同步更新 AGV 图层位姿
-                m_agvLayer->updatePose(m_reloLayer->pos().x() * 1000,
-                                       -m_reloLayer->pos().y() * 1000,
-                                       m_reloLayer->getAngle() * 1000);
-                update();
-            }
-            else
-            {
-                // 原有的地图平移逻辑
-                QPointF delta = currentPos - lastPos;
-                m_offset += delta;
-                update();
-            }
-        }
-
-        if (event->type() == QEvent::TouchEnd || event->type() == QEvent::TouchCancel)
-        {
-            m_isDraggingSmall = false;
-            m_isDraggingBig = false;
-            m_touchActive = false;
-        }
-    }
-    // --- 双指缩放 + 平移 ---
-    else if (points.count() == 2)
-    {
-        QPointF p1 = points[0].pos();
-        QPointF p2 = points[1].pos();
-        QPointF p1Last = points[0].lastPos();
-        QPointF p2Last = points[1].lastPos();
-
-        // 计算中心点
-        QPointF currentCenter = (p1 + p2) / 2.0;
-        QPointF lastCenter = (p1Last + p2Last) / 2.0;
-
-        // 计算缩放比例
-        double currentDist = QLineF(p1, p2).length();
-        double lastDist = QLineF(p1Last, p2Last).length();
-
-        if (lastDist > 0.1)
-        {
-            double scaleFactor = currentDist / lastDist;
-            double newScale = m_scale * scaleFactor;
-
-            // 限制范围
-            if (newScale < 1.0)
-                newScale = 1.0;
-            if (newScale > 500.0)
-                newScale = 500.0;
-
-            // 以手势中心为锚点缩放
-            // World = (Screen - Offset) / Scale
-            QPointF worldPos = (currentCenter - m_offset) / m_scale;
-
-            m_scale = newScale;
-
-            // NewOffset = Screen - World * NewScale
-            m_offset = currentCenter - (worldPos * m_scale);
-
-            // 加上双指同时移动的偏移量
-            m_offset += (currentCenter - lastCenter);
-
-            update();
-        }
-    }
-
-    event->accept();
+    return BaseDisplayWidget::event(event);
 }

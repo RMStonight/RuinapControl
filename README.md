@@ -1,5 +1,12 @@
 # This is a README
 
+## 20260202 V1.2.0
+
+* MonitorWidget 瘦身，提取出 MapDataManager、MonitorInteractionHandler、RelocationController
+* MapDataManager 处理加载调度地图数据
+* MonitorInteractionHandler 处理鼠标和触摸屏交互逻辑
+* RelocationController 处理重定位相关的交互逻辑
+
 ## 20260202 V1.1.9
 
 * 开发重定位功能，支持鼠标 + 触屏操作，通过发布 ros 节点 /baseinipose 来进行交互
