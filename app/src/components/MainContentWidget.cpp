@@ -78,14 +78,13 @@ void MainContentWidget::initLayout()
     m_tabWidget->addTab(createPlaceholderTab("任务管理"), "任务管理");
 
     // ==========================================
-    // Tab 6 - 8: 其他功能页
+    // Tab 6 - 7: 其他功能页
     // ==========================================
 
     m_tabWidget->addTab(createPlaceholderTab("调试专用"), "调试专用");
     m_tabWidget->addTab(createPlaceholderTab("日志记录"), "日志记录");
-    m_tabWidget->addTab(createPlaceholderTab("用户权限"), "用户权限");
     // ==========================================
-    // Tab 9: 系统设置页面
+    // Tab 8: 系统设置页面
     // ==========================================
     SystemSettingsWidget *settingsTab = new SystemSettingsWidget(this);
     m_tabWidget->addTab(settingsTab, "系统设置"); // 将其实例化并加入 Tab

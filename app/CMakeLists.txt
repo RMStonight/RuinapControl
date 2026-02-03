@@ -40,6 +40,8 @@ set(SOURCES
     include/utils/CommunicationWsClient.h
     include/utils/NetworkCheckThread.h
     include/utils/AgvData.h
+    include/utils/PermissionManager.h
+    include/utils/GlobalEventFilter.h
     include/monitor/MapDataManager.h
     include/monitor/MonitorInteractionHandler.h
     include/monitor/RelocationController.h

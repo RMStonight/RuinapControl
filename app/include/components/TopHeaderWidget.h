@@ -6,6 +6,9 @@
 #include <QTimer>
 #include "NetworkCheckThread.h"
 #include "utils/ConfigManager.h"
+#include <QTimer>
+#include <QEvent>
+#include <QMouseEvent>
 
 // 左上角 logo 的命名方式
 #define TOP_LEFT_LOGO "top_left_logo.png"
@@ -25,14 +28,19 @@ public:
     void setAgvInfo(const QString &id, const QString &ip);
     void setBatteryLevel(int level);
     void setRunMode(const QString &mode);
-    void setAgvStatus(const QString &status);      
-    void setLightColor(const QString &colorStr);    // 设置指示灯颜色的接口
-    void setNetworkServerIp(const QString &ip);     // 设置要Ping的服务器IP
+    void setAgvStatus(const QString &status);
+    void setLightColor(const QString &colorStr); // 设置指示灯颜色的接口
+    void setNetworkServerIp(const QString &ip);  // 设置要Ping的服务器IP
+
+protected:
+    // 重写事件过滤器
+    bool eventFilter(QObject *watched, QEvent *event) override;
 
 private slots:
     void updateInfoFromConfig(); // 新增槽函数
     void updateUi();
-    void onNetworkStatusChanged(QString text, bool isNormal);   // 处理网络线程返回的状态
+    void onNetworkStatusChanged(QString text, bool isNormal); // 处理网络线程返回的状态
+    void onLogoLongPressed();                                 // 长按触发的槽函数
 
 private:
     const QString valueColor = "#007055";
@@ -42,16 +50,17 @@ private:
 
     // UI 控件指针
     QLabel *m_logoLabel;
+    QLabel *m_userRoleLabel;
     QLabel *m_agvIdLabel;
     QLabel *m_ipLabel;
     QLabel *m_networkCheckNameLabel;
     QLabel *m_networkCheckValueLabel;
-    QLabel *m_runModeNameLabel;     // 显示 "运行模式："
+    QLabel *m_runModeNameLabel; // 显示 "运行模式："
     QLabel *m_runModeValueLabel;
-    QLabel *m_agvStatusNameLabel;   // 显示 "当前状态："
+    QLabel *m_agvStatusNameLabel; // 显示 "当前状态："
     QLabel *m_agvStatusValueLabel;
     QProgressBar *m_batteryBar;
-    QLabel *m_lightLabel;           // 顶部指示灯
+    QLabel *m_lightLabel; // 顶部指示灯
 
     // 辅助函数：给 Pixmap 染色
     QPixmap colorizePixmap(const QPixmap &src, const QColor &color);
@@ -60,12 +69,17 @@ private:
     QTimer *m_updateTimer;
     const int UPDATE_INTERVAL_MS = 100;
 
+    void handleUserRoleUpdate(UserRole role);
     void handleLightUpdate(int light);
     void handleAgvModeUpdate(int agvMode);
     void handleAgvStateUpdate(int agvState);
 
     // 网络检测线程指针
     NetworkCheckThread *m_netThread;
+
+    // 长按 logo 相关
+    QTimer *m_logoLongPressTimer;   // 长按计时器
+    const int LONG_PRESS_MS = 3000; // 3000 毫秒 = 3 秒
 };
 
 #endif // TOPHEADERWIDGET_H

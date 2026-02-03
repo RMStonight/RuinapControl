@@ -24,12 +24,8 @@ AgvAttribute<T> parseAttr(const QJsonObject &root, const QString &key)
 
 AgvData *AgvData::instance()
 {
-    if (!s_instance)
-    {
-        // 简单单例实现 (注意：如果在多线程构造需加锁，但在主线程初始化通常安全)
-        s_instance = new AgvData();
-    }
-    return s_instance;
+    static AgvData instance;
+    return &instance;
 }
 
 // 初始化 AgvData

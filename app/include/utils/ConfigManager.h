@@ -6,6 +6,14 @@
 #include <QReadWriteLock>
 #include <atomic>
 
+// 枚举类型定义
+enum class UserRole
+{
+    Operator = 1, // 普通用户
+    Admin = 2,    // 管理员
+    Developer = 3 // 开发者
+};
+
 class ConfigManager : public QObject
 {
     Q_OBJECT
@@ -13,6 +21,10 @@ class ConfigManager : public QObject
 public:
     // 获取单例实例
     static ConfigManager *instance();
+
+    // 特殊参数，不读取 config 配置文件
+    UserRole currentUserRole() const;
+    void setCurrentUserRole(UserRole role);
 
     // 初始化/加载配置 (在 main.cpp 调用)
     void load();
@@ -75,6 +87,9 @@ signals:
 
 private:
     explicit ConfigManager(QObject *parent = nullptr); // 私有构造
+
+    // 特殊参数，不读取 config 配置文件
+    std::atomic<int> m_currentUserRole; // 当前用户，1 operator，2 admin
 
     // 内存中的变量缓存
     // 车体参数

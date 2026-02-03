@@ -3,6 +3,7 @@
 #include <QIcon>
 #include "utils/ConfigManager.h"
 #include "Version.h"
+#include "utils/GlobalEventFilter.h"
 
 // 程序的任务栏/窗口左上角图标
 #define ICON_LOGO "icon.png"
@@ -48,6 +49,10 @@ int main(int argc, char *argv[])
         // 注意：这里用 stderr 打印，因为 qDebug 可能还没初始化好
         fprintf(stderr, "Warning: Failed to load window icon!\n");
     }
+
+    // 实例化并安装全局事件过滤器
+    GlobalEventFilter *filter = new GlobalEventFilter();
+    app.installEventFilter(filter);
 
     // 创建并显示主窗口
     MainWindow w;

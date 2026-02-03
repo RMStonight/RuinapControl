@@ -8,5 +8,7 @@
     <file>icons/checkbox_checked.svg</file>
     <file>styles/top_header.qss</file>
     <file>icons/light.svg</file>
+    <file>icons/admin.svg</file>
+    <file>icons/operator.svg</file>
   </qresource>
 </RCC>

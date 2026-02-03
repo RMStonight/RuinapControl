@@ -98,14 +98,14 @@ void ManualControlWidget::initUi()
 
     QGridLayout *moveGrid = new QGridLayout(moveBox);
     const QString green = "#00897B";
-    moveGrid->addWidget(createMomentaryButton(1, "↖", green, 8), 0, 0);
-    moveGrid->addWidget(createMomentaryButton(1, "↑", green, 2), 0, 1);
-    moveGrid->addWidget(createMomentaryButton(1, "↗", green, 7), 0, 2);
-    moveGrid->addWidget(createMomentaryButton(1, "←", green, 4), 1, 0);
-    moveGrid->addWidget(createMomentaryButton(1, "→", green, 3), 1, 2);
-    moveGrid->addWidget(createMomentaryButton(1, "↙", green, 6), 2, 0);
-    moveGrid->addWidget(createMomentaryButton(1, "↓", green, 1), 2, 1);
-    moveGrid->addWidget(createMomentaryButton(1, "↘", green, 5), 2, 2);
+    moveGrid->addWidget(createMomentaryButton(ButtonType::Move, "↖", green, 8), 0, 0);
+    moveGrid->addWidget(createMomentaryButton(ButtonType::Move, "↑", green, 2), 0, 1);
+    moveGrid->addWidget(createMomentaryButton(ButtonType::Move, "↗", green, 7), 0, 2);
+    moveGrid->addWidget(createMomentaryButton(ButtonType::Move, "←", green, 4), 1, 0);
+    moveGrid->addWidget(createMomentaryButton(ButtonType::Move, "→", green, 3), 1, 2);
+    moveGrid->addWidget(createMomentaryButton(ButtonType::Move, "↙", green, 6), 2, 0);
+    moveGrid->addWidget(createMomentaryButton(ButtonType::Move, "↓", green, 1), 2, 1);
+    moveGrid->addWidget(createMomentaryButton(ButtonType::Move, "↘", green, 5), 2, 2);
 
     // 动作控制 (橙色四向)
     QGroupBox *actionBox = new QGroupBox("动作控制");
@@ -115,10 +115,10 @@ void ManualControlWidget::initUi()
 
     QGridLayout *actionGrid = new QGridLayout(actionBox);
     const QString orange = "#FFA726";
-    actionGrid->addWidget(createMomentaryButton(2, "↑", orange, 1), 0, 1);
-    actionGrid->addWidget(createMomentaryButton(2, "←", orange, 3), 1, 0);
-    actionGrid->addWidget(createMomentaryButton(2, "→", orange, 4), 1, 2);
-    actionGrid->addWidget(createMomentaryButton(2, "↓", orange, 2), 2, 1);
+    actionGrid->addWidget(createMomentaryButton(ButtonType::Act, "↑", orange, 1), 0, 1);
+    actionGrid->addWidget(createMomentaryButton(ButtonType::Act, "←", orange, 3), 1, 0);
+    actionGrid->addWidget(createMomentaryButton(ButtonType::Act, "→", orange, 4), 1, 2);
+    actionGrid->addWidget(createMomentaryButton(ButtonType::Act, "↓", orange, 2), 2, 1);
 
     row3->addStretch(1); // 左侧弹簧
     row3->addWidget(moveBox);
@@ -132,15 +132,15 @@ void ManualControlWidget::initUi()
     row4->setSpacing(20);
 
     // 左对齐组
-    row4->addWidget(createMomentaryButton(3, "删除装卸", "#F44336", 1));
-    row4->addWidget(createMomentaryButton(4, "开始任务", "#4CAF50", 1));
+    row4->addWidget(createMomentaryButton(ButtonType::Cancel, "删除装卸", "#F44336", 1));
+    row4->addWidget(createMomentaryButton(ButtonType::Start, "开始任务", "#4CAF50", 1));
 
     // 中间弹簧：将两组按钮推向极两端
     row4->addStretch(1);
 
     // 右对齐组
-    row4->addWidget(createMomentaryButton(5, "暂停任务", "#FFC107", 1));
-    row4->addWidget(createMomentaryButton(6, "恢复任务", "#4CAF50", 1));
+    row4->addWidget(createMomentaryButton(ButtonType::Pause, "暂停任务", "#FFC107", 1));
+    row4->addWidget(createMomentaryButton(ButtonType::Resume, "恢复任务", "#4CAF50", 1));
 
     mainVLayout->addLayout(row4);
 }
@@ -152,10 +152,10 @@ void ManualControlWidget::initUi()
  * @param color 背景颜色
  * @param val 按下时赋予的值 (仅对 int 变量有效)
  */
-QPushButton *ManualControlWidget::createMomentaryButton(int type, const QString &text, const QString &color, int val)
+QPushButton *ManualControlWidget::createMomentaryButton(ButtonType type, const QString &text, const QString &color, int val)
 {
     QPushButton *btn = new QPushButton(text);
-    if (type == 1)
+    if (type == ButtonType::Move)
     {
         btn->setFixedSize(120, 80);
         btn->setStyleSheet(QString(
@@ -175,64 +175,68 @@ QPushButton *ManualControlWidget::createMomentaryButton(int type, const QString 
     // 处理按下逻辑
     connect(btn, &QPushButton::pressed, this, [=]()
             {
-        if (type == 1) {
-            agvData->setManualDir(val);
-        }
-        else if (type == 2)
-        {
-            agvData->setManualAct(val);
-        } 
-        else if (type == 3)
-        {
-            agvData->setTaskCancel(true);
-        } 
-        else if (type == 4)
-        {
-            agvData->setTaskStart(true);
-        } 
-        else if (type == 5)
-        {
-            agvData->setTaskPause(true);
-        } 
-        else if (type == 6)
-        {
-            agvData->setTaskResume(true);
-        } 
-        else {
+                switch (type)
+                {
+                case ButtonType::Move:
+                    agvData->setManualDir(val);
+                    break;
 
-        } });
+                case ButtonType::Act:
+                    agvData->setManualAct(val);
+                    break;
+
+                case ButtonType::Cancel:
+                    agvData->setTaskCancel(true);
+                    break;
+
+                case ButtonType::Start:
+                    agvData->setTaskStart(true);
+                    break;
+
+                case ButtonType::Pause:
+                    agvData->setTaskPause(true);
+                    break;
+
+                case ButtonType::Resume:
+                    agvData->setTaskResume(true);
+                    break;
+
+                default:
+                    break;
+                } });
 
     // 处理松开逻辑
     connect(btn, &QPushButton::released, this, [=]()
             {
-        if (type == 1) {
-            // m_manualDir
+                switch (type)
+                {
+                case ButtonType::Move:
             agvData->setManualDir(0);
-        } 
-        else if (type == 2)
-        {
-            // m_manualAct
-            agvData->setManualAct(0);
-        } 
-        else if (type == 3)
-        {
-            agvData->setTaskCancel(false);
-        } 
-        else if (type == 4)
-        {
-            agvData->setTaskStart(false);
-        } 
-        else if (type == 5)
-        {
-            agvData->setTaskPause(false);
-        } 
-        else if (type == 6)
-        {
-            agvData->setTaskResume(false);
-        } 
-        else {
+                    break;
 
-        } });
+                case ButtonType::Act:
+            agvData->setManualAct(0);
+                    break;
+
+                case ButtonType::Cancel:
+            agvData->setTaskCancel(false);
+                    break;
+
+                case ButtonType::Start:
+                    agvData->setTaskStart(false);
+                    break;
+
+                case ButtonType::Pause:
+                    agvData->setTaskPause(false);
+                    break;
+
+                case ButtonType::Resume:
+                    agvData->setTaskResume(false);
+                    break;
+
+                default:
+                    break;
+                } });
 
     return btn;
 }

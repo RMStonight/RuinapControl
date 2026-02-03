@@ -1,5 +1,14 @@
 # This is a README
 
+## 20260203 V1.2.1
+
+* 新增 admin.svg operator.svg 图标，用于区分普通用户和管理员
+* ConfigManager 中新增当前用户权限，该参数不从配置文件读取，打开软件时默认为 operator
+* 新增 PermissionManager 来管理系统的用户权限
+* 新增 GlobalEventFilter 来实现全局的事件过滤器
+* main 中实现创建全局的事件过滤器
+* TopHeaderWidget 中新增交互逻辑，长按 LOGO 3s 可切换至管理员模式，且屏幕无操作后，会在 5s 内退回普通用户
+
 ## 20260202 V1.2.0
 
 * MonitorWidget 瘦身，提取出 MapDataManager、MonitorInteractionHandler、RelocationController

@@ -7,33 +7,14 @@ static ConfigManager *g_instance = nullptr;
 
 ConfigManager *ConfigManager::instance()
 {
-    if (!g_instance)
-    {
-        g_instance = new ConfigManager();
-    }
-    return g_instance;
+    static ConfigManager instance;
+    return &instance;
 }
 
 ConfigManager::ConfigManager(QObject *parent) : QObject(parent)
 {
-    // // 设置默认值，防止第一次运行读不到数据
-    // // 车体参数
-    // m_agvId = "1";
-    // m_agvIp = "127.0.0.1";
-    // m_maxSpeed = 100;
-    // // 文件夹路径
-    // m_resourceFolder = "/home/ruinap/config_qt/resource";
-    // m_mapPngFolder = "/home/ruinap/map";
-    // // 网络通讯
-    // m_commIp = "host.docker.internal";
-    // m_commPort = 9001;
-    // m_rosbridgeIp = "host.docker.internal";
-    // m_rosbridgePort = 9090;
-    // m_serverIp = "192.168.1.1";
-    // m_serverPort = 8080;
-    // // 系统选项
-    // m_debugMode = false;
-    // m_fullScreen = false;
+    // 特殊参数初始化
+    m_currentUserRole.store(static_cast<int>(UserRole::Operator));
 }
 
 void ConfigManager::load()
@@ -187,6 +168,10 @@ int ConfigManager::serverPort() const
     return m_serverPort.load();
 }
 // 系统选项
+UserRole ConfigManager::currentUserRole() const
+{
+    return static_cast<UserRole>(m_currentUserRole.load());
+}
 bool ConfigManager::debugMode() const
 {
     return m_debugMode.load();
@@ -278,6 +263,10 @@ void ConfigManager::setServerPort(int port)
     m_serverPort.store(port);
 }
 // 系统选项
+void ConfigManager::setCurrentUserRole(UserRole role)
+{
+    m_currentUserRole.store(static_cast<int>(role));
+}
 void ConfigManager::setDebugMode(bool enable)
 {
     m_debugMode.store(enable);

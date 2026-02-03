@@ -11,6 +11,7 @@
 #include <QPainter>
 #include "utils/AgvData.h"
 #include <QDebug>
+#include "PermissionManager.h"
 
 TopHeaderWidget::TopHeaderWidget(QWidget *parent) : QWidget(parent)
 {
@@ -67,6 +68,19 @@ TopHeaderWidget::TopHeaderWidget(QWidget *parent) : QWidget(parent)
     m_updateTimer->setInterval(UPDATE_INTERVAL_MS);
     connect(m_updateTimer, &QTimer::timeout, this, &TopHeaderWidget::updateUi);
     m_updateTimer->start();
+
+    // 初始化长按计时器
+    m_logoLongPressTimer = new QTimer(this);
+    m_logoLongPressTimer->setSingleShot(true);
+    m_logoLongPressTimer->setInterval(LONG_PRESS_MS);
+    connect(m_logoLongPressTimer, &QTimer::timeout, this, &TopHeaderWidget::onLogoLongPressed);
+
+    // 【新增】为 Logo 安装事件过滤器
+    if (m_logoLabel)
+    {
+        m_logoLabel->installEventFilter(this);
+        m_logoLabel->setAttribute(Qt::WA_AcceptTouchEvents); // 确保支持触摸事件
+    }
 }
 
 TopHeaderWidget::~TopHeaderWidget()
@@ -136,11 +150,11 @@ void TopHeaderWidget::initLayout()
     // 定义统一的大小，用于平衡左右
     const int ICON_SIZE = 48; // 稍微调大一点，留出余量
 
-    // 左侧：透明占位符 (Invisible Dummy Widget)
-    // 它的唯一作用就是占位，平衡右侧的灯，让中间的文字绝对居中
-    QWidget *dummyLeftWidget = new QWidget(this);
-    dummyLeftWidget->setFixedSize(ICON_SIZE, ICON_SIZE);
-    // 不需要设置任何内容，默认透明
+    // 左侧：由原来的 dummyLeftWidget 变为 m_userRoleLabel
+    m_userRoleLabel = new QLabel(this);
+    m_userRoleLabel->setFixedSize(ICON_SIZE, ICON_SIZE);
+    m_userRoleLabel->setScaledContents(true);
+    m_userRoleLabel->setAlignment(Qt::AlignCenter);
 
     // 中间：文字包裹层 (Text Wrapper)
     QWidget *textWrapper = new QWidget(this);
@@ -179,7 +193,7 @@ void TopHeaderWidget::initLayout()
     // 这样 [Dummy+Text+Light] 作为一个整体居中，
     // 而因为 Dummy 和 Light 等宽，Text 就在该整体的正中间。
     centerMainLayout->addStretch();
-    centerMainLayout->addWidget(dummyLeftWidget);
+    centerMainLayout->addWidget(m_userRoleLabel);
     centerMainLayout->addWidget(textWrapper);
     centerMainLayout->addWidget(m_lightLabel);
     centerMainLayout->addStretch();
@@ -290,6 +304,49 @@ void TopHeaderWidget::initLayout()
     topLayout->addWidget(leftContainer);
     topLayout->addWidget(centerContainer);
     topLayout->addWidget(rightContainer);
+}
+
+void TopHeaderWidget::onLogoLongPressed()
+{
+    qDebug() << "Logo long pressed! Switching to Admin role.";
+
+    // 设置当前角色为管理员
+    cfg->setCurrentUserRole(UserRole::Admin);
+
+    // 开启定时器
+    PermissionManager::instance()->startMonitor();
+}
+
+bool TopHeaderWidget::eventFilter(QObject *watched, QEvent *event)
+{
+    if (watched == m_logoLabel)
+    {
+        // 处理鼠标左键或触摸开始
+        if (event->type() == QEvent::MouseButtonPress)
+        {
+            QMouseEvent *mouseEvent = static_cast<QMouseEvent *>(event);
+            if (mouseEvent->button() == Qt::LeftButton)
+            {
+                m_logoLongPressTimer->start();
+            }
+        }
+        else if (event->type() == QEvent::TouchBegin)
+        {
+            m_logoLongPressTimer->start();
+        }
+        // 处理松开、离开区域或取消（如滑动）的情况
+        else if (event->type() == QEvent::MouseButtonRelease ||
+                 event->type() == QEvent::Leave ||
+                 event->type() == QEvent::TouchEnd ||
+                 event->type() == QEvent::TouchCancel)
+        {
+            if (m_logoLongPressTimer->isActive())
+            {
+                m_logoLongPressTimer->stop();
+            }
+        }
+    }
+    return QWidget::eventFilter(watched, event);
 }
 
 // 私有槽函数
@@ -427,6 +484,8 @@ void TopHeaderWidget::updateUi()
 {
     // 获取 AgvData 实例
     AgvData *agvData = AgvData::instance();
+    // 更新用户角色图标
+    handleUserRoleUpdate(cfg->currentUserRole());
     // 更新 agvId
     int agvId = agvData->agvId().value;
     QString _agvIdLabel = QStringLiteral("AGV编号：<span style='color: %1;'>%2</span>").arg(valueColor).arg(agvId);
@@ -443,6 +502,43 @@ void TopHeaderWidget::updateUi()
     // 更新 agvState
     int agvState = agvData->agvState().value;
     handleAgvStateUpdate(agvState);
+}
+
+void TopHeaderWidget::handleUserRoleUpdate(UserRole role)
+{
+    QString iconPath;
+    QColor iconColor;
+
+    // 根据权限选择图标和颜色
+    if (role == UserRole::Admin)
+    {
+        iconPath = ":/icons/admin.svg"; // 需在 .qrc 中添加此资源
+        iconColor = QColor("#0078D7");  // 管理员用蓝色
+    }
+    else if (role == UserRole::Developer)
+    {
+        iconPath = ":/icons/admin.svg"; // 开发者图标
+        iconColor = QColor("#673AB7");  // 紫色
+    }
+    else
+    {
+        iconPath = ":/icons/operator.svg"; // 普通用户用灰色
+        iconColor = QColor("#666666");
+    }
+
+    QPixmap pix(iconPath);
+    if (!pix.isNull())
+    {
+        // 使用已有的染色辅助函数，让图标颜色与权限等级匹配
+        m_userRoleLabel->setPixmap(colorizePixmap(pix, iconColor));
+    }
+    else
+    {
+        // 容错：如果没有找到图标资源，显示文字简写
+        m_userRoleLabel->clear();
+        m_userRoleLabel->setText(role == UserRole::Admin ? "ADM" : "OPT");
+        m_userRoleLabel->setStyleSheet(QString("color: %1; font-weight: bold; font-size: 14px;").arg(iconColor.name()));
+    }
 }
 
 // 处理 light 更新
