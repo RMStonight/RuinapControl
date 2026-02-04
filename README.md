@@ -2,13 +2,13 @@
 
 ## 界面预览
 
-<img alt="" src="./imgs/1-vehicleInfo.png" width="45%"><img alt="" src="./imgs/2-manualControl.png" width="45%">&nbsp;&nbsp;&nbsp;
+<img alt="" src="./imgs/1-vehicleInfo.png" width="45%">&nbsp;&nbsp;&nbsp;<img alt="" src="./imgs/2-manualControl.png" width="45%">
 
-<img alt="" src="./imgs/3-monitor.png" width="45%"><img alt="" src="./imgs/4-io.png" width="45%">&nbsp;&nbsp;&nbsp;
+<img alt="" src="./imgs/3-monitor.png" width="45%">&nbsp;&nbsp;&nbsp;<img alt="" src="./imgs/4-io.png" width="45%">
 
-<img alt="" src="./imgs/5-task.png" width="45%"><img alt="" src="./imgs/6-serial.png" width="45%">&nbsp;&nbsp;&nbsp;
+<img alt="" src="./imgs/5-task.png" width="45%">&nbsp;&nbsp;&nbsp;<img alt="" src="./imgs/6-serial.png" width="45%">
 
-<img alt="" src="./imgs/7-log.png" width="45%"><img alt="" src="./imgs/8-setting.png" width="45%">
+<img alt="" src="./imgs/7-log.png" width="45%">&nbsp;&nbsp;&nbsp;<img alt="" src="./imgs/8-setting.png" width="45%">
 
 ## 20260204 V1.2.2
 
