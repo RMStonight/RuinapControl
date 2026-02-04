@@ -52,6 +52,9 @@ public:
     int rosBridgePort() const;
     QString serverIp() const;
     int serverPort() const;
+    // 其他通讯
+    QString microControllerCom() const;
+    int microControllerComBaudrate() const;
     // 系统运行
     bool debugMode() const;
     bool fullScreen() const;
@@ -77,6 +80,9 @@ public:
     void setRosBridgePort(int port);
     void setServerIp(const QString &ip);
     void setServerPort(int port);
+    // 其他通讯
+    void setMicroControllerCom(const QString &com);
+    void setMicroControllerComBaudrate(int baudrate);
     // 系统运行
     void setDebugMode(bool enable);
     void setFullScreen(bool enable);
@@ -112,6 +118,9 @@ private:
     std::atomic<int> m_rosbridgePort;
     QString m_serverIp;
     std::atomic<int> m_serverPort;
+    // 其他通讯
+    QString m_microControllerCom;                  // 单片机 com 口
+    std::atomic<int> m_microControllerComBaudrate; // 单片机 com 口波特率
     // 系统运行
     std::atomic<bool> m_debugMode;
     std::atomic<bool> m_fullScreen;

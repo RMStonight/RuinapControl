@@ -199,7 +199,37 @@ void SystemSettingsWidget::initUI()
     contentLayout->addLayout(netLayout);
 
     // ==========================================
-    // 第四部分：系统选项 [System]
+    // 第四部分：其他通讯 [OtherCommunication]
+    // ==========================================
+    contentLayout->addWidget(createSectionLabel("其他通信设置"));
+
+    QFormLayout *otherCommLayout = new QFormLayout();
+    otherCommLayout->setLabelAlignment(Qt::AlignLeft | Qt::AlignVCenter);
+    otherCommLayout->setVerticalSpacing(10);
+
+    m_microControllerComEdit = new QLineEdit(this);
+    m_microControllerComEdit->setPlaceholderText("/dev/ttyS1");
+    m_microControllerComEdit->setFixedWidth(200);
+
+    m_microControllerComBaudrateCombo = new QComboBox(this);
+    m_microControllerComBaudrateCombo->setFixedWidth(120);
+    // 添加选项，第二个参数是 userData (实际存储的值)
+    m_microControllerComBaudrateCombo->addItem("1200", 1200);
+    m_microControllerComBaudrateCombo->addItem("4800", 4800);
+    m_microControllerComBaudrateCombo->addItem("9600", 9600);
+    m_microControllerComBaudrateCombo->addItem("19200", 19200);
+    m_microControllerComBaudrateCombo->addItem("38400", 38400);
+    m_microControllerComBaudrateCombo->addItem("57600", 57600);
+    m_microControllerComBaudrateCombo->addItem("115200", 115200);
+    m_microControllerComBaudrateCombo->setView(new QListView(this));
+
+    otherCommLayout->addRow("单片机串口:", m_microControllerComEdit);
+    otherCommLayout->addRow("单片机波特率:", m_microControllerComBaudrateCombo);
+
+    contentLayout->addLayout(otherCommLayout);
+
+    // ==========================================
+    // 第五部分：系统选项 [System]
     // ==========================================
     contentLayout->addWidget(createSectionLabel("系统运行选项"));
 
@@ -338,6 +368,15 @@ void SystemSettingsWidget::loadSettings()
     m_rosBridgePortBox->setValue(cfg->rosBridgePort());
     m_serverIpEdit->setText(cfg->serverIp());
     m_serverPortBox->setValue(cfg->serverPort());
+    // 其他通讯
+    m_microControllerComEdit->setText(cfg->microControllerCom());
+    // 根据存储的 int 值找到对应的下拉框索引
+    int microControllerComBaudrate = cfg->microControllerComBaudrate();
+    int microControllerComBaudrateIndex = m_microControllerComBaudrateCombo->findData(microControllerComBaudrate);
+    if (microControllerComBaudrateIndex != -1)
+    {
+        m_microControllerComBaudrateCombo->setCurrentIndex(microControllerComBaudrateIndex);
+    }
     // 系统选项
     m_debugModeCheck->setChecked(cfg->debugMode());
     m_fullScreenCheck->setChecked(cfg->fullScreen());
@@ -369,6 +408,9 @@ void SystemSettingsWidget::saveSettings()
     cfg->setRosBridgePort(m_rosBridgePortBox->value());
     cfg->setServerIp(m_serverIpEdit->text());
     cfg->setServerPort(m_serverPortBox->value());
+    // 其他通讯
+    cfg->setMicroControllerCom(m_microControllerComEdit->text());
+    cfg->setMicroControllerComBaudrate(m_microControllerComBaudrateCombo->currentData().toInt());
     // 系统选项
     cfg->setDebugMode(m_debugModeCheck->isChecked());
     cfg->setFullScreen(m_fullScreenCheck->isChecked());

@@ -8,6 +8,7 @@
 #include "VehicleInfoWidget.h"
 #include "IoWidget.h"
 #include "ManualControlWidget.h"
+#include "SerialDebugWidget.h"
 
 // 前置声明
 class QTabWidget;
@@ -36,15 +37,16 @@ private:
     QWidget *createPlaceholderTab(const QString &text);
 
     OptionalInfoWidget *m_sharedOptionalInfo; // 唯一的右侧栏实例
-    QTabWidget *m_tabWidget; // Tab 容器
-    QPushButton *m_testBtn;  // 保留原来的按钮
+    QTabWidget *m_tabWidget;                  // Tab 容器
+    QPushButton *m_testBtn;                   // 保留原来的按钮
 
-    VehicleInfoWidget *m_vehicleInfoTab;    //  vehicleInfo 标签页
-    ManualControlWidget *m_manualControlTab;    //  manualControl 标签页
-    MonitorWidget *m_monitorTab;    //  monitor 标签页
-    IoWidget *m_ioTab;    //  Io 标签页
+    VehicleInfoWidget *m_vehicleInfoTab;     //  vehicleInfo 标签页
+    ManualControlWidget *m_manualControlTab; //  manualControl 标签页
+    MonitorWidget *m_monitorTab;             //  monitor 标签页
+    IoWidget *m_ioTab;                       //  Io 标签页
+    SerialDebugWidget *m_serialTab;          //  串口调试标签页
 
-    BottomInfoBar *m_bottomBar;     // 底部栏
+    BottomInfoBar *m_bottomBar; // 底部栏
 };
 
 #endif // MAINCONTENTWIDGET_H

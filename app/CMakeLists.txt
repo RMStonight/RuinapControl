@@ -9,7 +9,7 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC OFF)
 
 # 查找 Qt 库
-find_package(Qt5 REQUIRED COMPONENTS Widgets Svg WebSockets)
+find_package(Qt5 REQUIRED COMPONENTS Widgets Svg WebSockets SerialPort)
 
 # 定义源文件列表 (包含新添加的组件文件)
 set(SOURCES
@@ -33,6 +33,7 @@ set(SOURCES
     src/components/OptionalInfoWidget.cpp
     src/components/IoWidget.cpp
     src/components/ManualControlWidget.cpp
+    src/components/SerialDebugWidget.cpp
 
     include/utils/ConfigManager.h
     include/utils/RosBridgeClient.h
@@ -56,6 +57,7 @@ set(SOURCES
     include/components/IoWidget.h
     include/components/BaseDisplayWidget.h
     include/components/ManualControlWidget.h
+    include/components/SerialDebugWidget.h
     include/layers/BaseLayer.h
     include/layers/GridLayer.h
     include/layers/MapLayer.h
@@ -89,4 +91,5 @@ target_link_libraries(RuinapControl
     Qt5::Widgets
     Qt5::Svg
     Qt5::WebSockets
+    Qt5::SerialPort
 )

@@ -53,6 +53,10 @@ private:
     QLineEdit *m_serverIpEdit;
     QSpinBox *m_serverPortBox;
 
+    // 其他通讯
+    QLineEdit *m_microControllerComEdit;
+    QComboBox *m_microControllerComBaudrateCombo;
+
     // 系统选项
     QCheckBox *m_debugModeCheck;
     QCheckBox *m_fullScreenCheck;

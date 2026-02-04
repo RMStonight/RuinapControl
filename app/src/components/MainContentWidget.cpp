@@ -78,11 +78,16 @@ void MainContentWidget::initLayout()
     m_tabWidget->addTab(createPlaceholderTab("任务管理"), "任务管理");
 
     // ==========================================
-    // Tab 6 - 7: 其他功能页
+    // Tab 6: 串口调试
     // ==========================================
+    m_serialTab = new SerialDebugWidget(this);
+    m_tabWidget->addTab(m_serialTab, "串口调试");
 
-    m_tabWidget->addTab(createPlaceholderTab("调试专用"), "调试专用");
+    // ==========================================
+    // Tab 7: 日志记录
+    // ==========================================
     m_tabWidget->addTab(createPlaceholderTab("日志记录"), "日志记录");
+
     // ==========================================
     // Tab 8: 系统设置页面
     // ==========================================

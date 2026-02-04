@@ -41,6 +41,9 @@ void ConfigManager::load()
     m_rosbridgePort = settings.value("Network/RosBridgePort", 9090).toInt();
     m_serverIp = settings.value("Network/ServerIP", "192.168.1.1").toString();
     m_serverPort = settings.value("Network/ServerPort", 8080).toInt();
+    // 其他通讯
+    m_microControllerCom = settings.value("OtherCommunication/MicroControllerCom", "/dev/ttyS1").toString();
+    m_microControllerComBaudrate = settings.value("OtherCommunication/MicroControllerComBaudrate", 115200).toInt();
     // 系统选项
     m_debugMode = settings.value("System/DebugMode", false).toBool();
     m_fullScreen = settings.value("System/FullScreen", false).toBool();
@@ -75,6 +78,9 @@ void ConfigManager::save()
     settings.setValue("Network/RosBridgePort", m_rosbridgePort.load());
     settings.setValue("Network/ServerIP", m_serverIp);
     settings.setValue("Network/ServerPort", m_serverPort.load());
+    // 其他通讯
+    settings.setValue("OtherCommunication/MicroControllerCom", m_microControllerCom);
+    settings.setValue("OtherCommunication/MicroControllerComBaudrate", m_microControllerComBaudrate.load());
     // 系统选项
     settings.setValue("System/DebugMode", m_debugMode.load());
     settings.setValue("System/FullScreen", m_fullScreen.load());
@@ -166,6 +172,16 @@ QString ConfigManager::serverIp() const
 int ConfigManager::serverPort() const
 {
     return m_serverPort.load();
+}
+// 其他通讯
+QString ConfigManager::microControllerCom() const
+{
+    QReadLocker locker(&m_lock);
+    return m_microControllerCom;
+}
+int ConfigManager::microControllerComBaudrate() const
+{
+    return m_microControllerComBaudrate.load();
 }
 // 系统选项
 UserRole ConfigManager::currentUserRole() const
@@ -261,6 +277,16 @@ void ConfigManager::setServerIp(const QString &ip)
 void ConfigManager::setServerPort(int port)
 {
     m_serverPort.store(port);
+}
+// 其他通讯
+void ConfigManager::setMicroControllerCom(const QString &com)
+{
+    QWriteLocker locker(&m_lock);
+    m_microControllerCom = com;
+}
+void ConfigManager::setMicroControllerComBaudrate(int baudrate)
+{
+    m_microControllerComBaudrate.store(baudrate);
 }
 // 系统选项
 void ConfigManager::setCurrentUserRole(UserRole role)

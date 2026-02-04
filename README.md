@@ -1,5 +1,25 @@
 # This is a README
 
+## 界面预览
+
+&nbsp;&nbsp;&nbsp;<img alt="" src="./imgs/1-vehicleInfo.png" width="60%">
+&nbsp;&nbsp;&nbsp;<img alt="" src="./imgs/2-manualControl.png" width="60%">
+&nbsp;&nbsp;&nbsp;<img alt="" src="./imgs/3-monitor.png" width="60%">
+&nbsp;&nbsp;&nbsp;<img alt="" src="./imgs/4-io.png" width="60%">
+&nbsp;&nbsp;&nbsp;<img alt="" src="./imgs/5-task.png" width="60%">
+&nbsp;&nbsp;&nbsp;<img alt="" src="./imgs/6-serial.png" width="60%">
+&nbsp;&nbsp;&nbsp;<img alt="" src="./imgs/7-log.png" width="60%">
+&nbsp;&nbsp;&nbsp;<img alt="" src="./imgs/8-setting.png" width="60%">
+
+## 20260204 V1.2.2
+
+* 新增系统参数栏【其他通讯设置】，并新增两个参数 单片机串口、单片机波特率，可在系统设置中修改
+* 新增 SerialDebugWidget 串口界面
+* 串口调试界面通过系统设置的单片机串口、单片机波特率来获取串口参数
+* 串口调试只有【打开/关闭串口】、【清空】两个按钮，以及主显示区域
+* 串口调试中需要接收到 \r\n 字符才会执行换行并显示
+* 串口调试中设置主显示区域上限 2000 行
+
 ## 20260203 V1.2.1
 
 * 新增 admin.svg operator.svg 图标，用于区分普通用户和管理员
