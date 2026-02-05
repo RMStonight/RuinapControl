@@ -7,6 +7,7 @@
 #include <QWidget>
 #include <QTimer>
 #include <QMap>
+#include "LogManager.h"
 
 class OptionalInfoWidget : public QScrollArea
 {
@@ -21,6 +22,9 @@ private slots:
     void updateUi();
 
 private:
+    // 日志管理器
+    LogManager *logger = &LogManager::instance();
+
     QWidget *m_contentWidget;     
     QVBoxLayout *m_contentLayout; 
 

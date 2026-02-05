@@ -10,13 +10,13 @@
 #include <QScrollArea>
 #include <QSettings>
 #include <QMessageBox>
-#include <QDebug>
 #include <QFile>
 #include "utils/ConfigManager.h"
 #include <QApplication>
 #include <QMessageBox>
 #include <QComboBox>
 #include <QListView>
+#include <QDebug>
 
 SystemSettingsWidget::SystemSettingsWidget(QWidget *parent) : QWidget(parent)
 {
@@ -43,7 +43,7 @@ void SystemSettingsWidget::initUI()
     }
     else
     {
-        qWarning() << "Error: Failed to load stylesheet from :/styles/main_content.qss";
+        logger->log(QStringLiteral("SystemSettingsWidget"), spdlog::level::err, QStringLiteral("Failed to load stylesheet from :/styles/main_content.qss!"));
     }
 
     // 设置主窗口布局 (最外层)
@@ -128,29 +128,36 @@ void SystemSettingsWidget::initUI()
     // ==========================================
     contentLayout->addWidget(createSectionLabel("文件路径设置"));
 
+    int folderEditLength = 600;
+
     QFormLayout *folderLayout = new QFormLayout();
     folderLayout->setLabelAlignment(Qt::AlignLeft | Qt::AlignVCenter);
     folderLayout->setVerticalSpacing(10);
 
     m_resourceFolderEdit = new QLineEdit(this);
     m_resourceFolderEdit->setPlaceholderText("请填写存放资源的文件夹");
-    m_resourceFolderEdit->setFixedWidth(200);
+    m_resourceFolderEdit->setFixedWidth(folderEditLength);
     folderLayout->addRow("资源文件夹:", m_resourceFolderEdit);
 
     m_mapPngFolderEdit = new QLineEdit(this);
     m_mapPngFolderEdit->setPlaceholderText("请填写存放 png 地图的文件夹");
-    m_mapPngFolderEdit->setFixedWidth(200);
+    m_mapPngFolderEdit->setFixedWidth(folderEditLength);
     folderLayout->addRow("地图png文件夹:", m_mapPngFolderEdit);
 
     m_mapJsonFolderEdit = new QLineEdit(this);
     m_mapJsonFolderEdit->setPlaceholderText("请填写存放 josn 地图的文件夹");
-    m_mapJsonFolderEdit->setFixedWidth(200);
+    m_mapJsonFolderEdit->setFixedWidth(folderEditLength);
     folderLayout->addRow("地图json文件夹:", m_mapJsonFolderEdit);
 
     m_configFolderEdit = new QLineEdit(this);
     m_configFolderEdit->setPlaceholderText("请填写存放配置文件的文件夹");
-    m_configFolderEdit->setFixedWidth(200);
+    m_configFolderEdit->setFixedWidth(folderEditLength);
     folderLayout->addRow("配置文件夹:", m_configFolderEdit);
+
+    m_logFolderEdit = new QLineEdit(this);
+    m_logFolderEdit->setPlaceholderText("请填写存放日志文件的文件夹");
+    m_logFolderEdit->setFixedWidth(folderEditLength);
+    folderLayout->addRow("日志文件夹:", m_logFolderEdit);
 
     contentLayout->addLayout(folderLayout);
 
@@ -361,6 +368,7 @@ void SystemSettingsWidget::loadSettings()
     m_mapPngFolderEdit->setText(cfg->mapPngFolder());
     m_mapJsonFolderEdit->setText(cfg->mapJsonFolder());
     m_configFolderEdit->setText(cfg->configFolder());
+    m_logFolderEdit->setText(cfg->logFolder());
     // 网络通讯
     m_commIpEdit->setText(cfg->commIp());
     m_commPortBox->setValue(cfg->commPort());
@@ -401,6 +409,7 @@ void SystemSettingsWidget::saveSettings()
     cfg->setMapPngFolder(m_mapPngFolderEdit->text());
     cfg->setMapJsonFolder(m_mapJsonFolderEdit->text());
     cfg->setConfigFolder(m_configFolderEdit->text());
+    cfg->setLogFolder(m_logFolderEdit->text());
     // 网络通讯
     cfg->setCommIp(m_commIpEdit->text());
     cfg->setCommPort(m_commPortBox->value());

@@ -10,6 +10,7 @@
 #include <QPushButton>
 #include <QMap>
 #include <QJsonObject>
+#include "LogManager.h"
 
 // 前向声明，减少头文件耦合
 class BaseLayer;
@@ -72,6 +73,9 @@ private:
     void checkPointClick(const QPointF &screenPos);
 
 private:
+    // 日志管理器
+    LogManager *logger = &LogManager::instance();
+
     // 剥离出的功能模块指针
     MapDataManager *m_mapDataManager = nullptr;
     MonitorInteractionHandler *m_interactionHandler = nullptr;

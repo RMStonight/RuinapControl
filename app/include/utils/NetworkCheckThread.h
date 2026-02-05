@@ -4,10 +4,13 @@
 #include <QThread>
 #include <QObject>
 #include <QList>
+#include <QMap>
 #include <QPair>
 #include <QMutex>
+#include "LogManager.h"
 
-struct DeviceNode {
+struct DeviceNode
+{
     QString name;
     QString ip;
 };
@@ -34,11 +37,17 @@ signals:
     void statusUpdate(QString text, bool isNormal);
 
 private:
+    // 日志管理器
+    LogManager *logger = &LogManager::instance();
+
     bool m_stop;
     QMutex m_mutex;
     QString m_serverIp;
     QList<DeviceNode> m_deviceList;
+    QMap<QString, QString> m_networkStatusMap; // 用于管理：对象名称 -> 延迟(ms) 或 "离线"
 
+    // 执行一轮后的日志记录逻辑
+    void logNetworkSummary();
     // 辅助函数：执行Ping并返回延迟，-1表示不通
     double pingAddress(const QString &ip);
 };

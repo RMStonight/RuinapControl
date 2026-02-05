@@ -6,6 +6,7 @@
 #include <QMouseEvent>
 #include <QTouchEvent>
 #include <QWheelEvent>
+#include "LogManager.h"
 
 class MonitorWidget; // 前向声明
 
@@ -27,6 +28,9 @@ public:
 
 private:
     MonitorWidget *w; // 指向父组件，用于访问状态和触发 update
+
+    // 日志管理器
+    LogManager *logger = &LogManager::instance();
 
     // 内部记录变量
     QPointF m_lastMousePos;

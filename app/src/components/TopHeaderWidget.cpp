@@ -10,8 +10,8 @@
 #include <QVariant>
 #include <QPainter>
 #include "utils/AgvData.h"
-#include <QDebug>
 #include "PermissionManager.h"
+#include "qdir.h"
 
 TopHeaderWidget::TopHeaderWidget(QWidget *parent) : QWidget(parent)
 {
@@ -47,11 +47,8 @@ TopHeaderWidget::TopHeaderWidget(QWidget *parent) : QWidget(parent)
 
     // 获取 eth_ip.json 的路径
     QString configFolder = cfg->configFolder();
-    if (!configFolder.endsWith("/"))
-    {
-        configFolder += "/";
-    }
-    m_netThread->loadConfig(configFolder + ETH_IP_JSON);
+    QString configFolderUrl = QDir(configFolder).filePath(ETH_IP_JSON);
+    m_netThread->loadConfig(configFolderUrl);
 
     // 设置默认服务器IP，实际使用中可以从 ConfigManager 读取
     QString serverIp = cfg->serverIp();
@@ -118,13 +115,8 @@ void TopHeaderWidget::initLayout()
     // 改为从内存单例读取
     m_logoLabel = new QLabel(this);
     QString resourceFolder = cfg->resourceFolder();
-    // 如果相对路径不是以 / 结尾则需要添加
-    if (!resourceFolder.endsWith("/"))
-    {
-        resourceFolder += "/";
-    }
-
-    QPixmap logo(resourceFolder + TOP_LEFT_LOGO);
+    QString resourceFolderUrl = QDir(resourceFolder).filePath(TOP_LEFT_LOGO);
+    QPixmap logo(resourceFolderUrl);
     if (!logo.isNull())
     {
         m_logoLabel->setPixmap(logo.scaled(200, 80, Qt::KeepAspectRatio, Qt::SmoothTransformation));
@@ -308,7 +300,7 @@ void TopHeaderWidget::initLayout()
 
 void TopHeaderWidget::onLogoLongPressed()
 {
-    qDebug() << "Logo long pressed! Switching to Admin role.";
+    logger->log(QStringLiteral("TopHeaderWidget"), spdlog::level::warn, QStringLiteral("Logo long pressed! Switching to Admin role."));
 
     // 设置当前角色为管理员
     cfg->setCurrentUserRole(UserRole::Admin);

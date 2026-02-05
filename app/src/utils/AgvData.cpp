@@ -1,5 +1,4 @@
 #include "AgvData.h"
-#include <QDebug>
 #include <QJsonDocument>
 #include <QJsonParseError>
 #include "ConfigManager.h"
@@ -829,13 +828,14 @@ bool AgvData::tryParseAgvJson(const QString &jsonStr, QJsonObject &resultObj)
 
     if (parseError.error != QJsonParseError::NoError)
     {
-        qWarning() << "AgvData JSON 解析错误:" << parseError.errorString();
+        QString jsonParseErr = "AgvData JSON 解析错误:" + parseError.errorString();
+        logger->log(QStringLiteral("AgvData"), spdlog::level::warn, jsonParseErr);
         return false;
     }
 
     if (!doc.isObject())
     {
-        qWarning() << "AgvData 数据格式错误: 不是 JSON 对象";
+        logger->log(QStringLiteral("AgvData"), spdlog::level::warn, QStringLiteral("AgvData 数据格式错误: 不是 JSON 对象"));
         return false;
     }
 
@@ -850,14 +850,14 @@ void AgvData::parseMsg(const QString &msg)
 
     if (!tryParseAgvJson(msg, root))
     {
-        qDebug() << "parseMsg 发生错误，非法的 json 结构";
+        logger->log(QStringLiteral("AgvData"), spdlog::level::warn, QStringLiteral("parseMsg 发生错误，非法的 json 结构"));
         return; // 校验失败
     }
 
     // 提取 Event 类型
     if (!root.value("Event").isString())
     {
-        qWarning() << "AgvData 缺少 Event 字段 或者 Event 字段不是 String 类型";
+        logger->log(QStringLiteral("AgvData"), spdlog::level::warn, QStringLiteral("AgvData 缺少 Event 字段 或者 Event 字段不是 String 类型"));
         return;
     }
     QString event = root.value("Event").toString();
@@ -866,7 +866,7 @@ void AgvData::parseMsg(const QString &msg)
     // 注意：Body 可能是 Object，也可能是 Array，这里假设你的业务数据主要是 Object
     if (!root.value("Body").isObject())
     {
-        qWarning() << "AgvData 缺少 Body 字段 或者 Body 字段不是 JSON 对象";
+        logger->log(QStringLiteral("AgvData"), spdlog::level::warn, QStringLiteral("AgvData 缺少 Body 字段 或者 Body 字段不是 JSON 对象"));
         return;
     }
     QJsonObject body = root.value("Body").toObject();
@@ -882,7 +882,7 @@ void AgvData::parseMsg(const QString &msg)
     }
     else
     {
-        qDebug() << "忽略未知的事件类型:" << event;
+        logger->log(QStringLiteral("AgvData"), spdlog::level::warn, QStringLiteral("忽略未知的事件类型: %1").arg(event));
     }
 }
 
@@ -893,7 +893,7 @@ void AgvData::parseAgvState(const QJsonObject &data)
     // 校验字段是否存在
     if (!data.value("AGVInfo").isObject())
     {
-        qWarning() << "AGV_STATE 错误: 缺少 AGVInfo 字段或者 AGVInfo 不是 JSON 对象";
+        logger->log(QStringLiteral("AgvData"), spdlog::level::warn, QStringLiteral("AGV_STATE 错误: 缺少 AGVInfo 字段或者 AGVInfo 不是 JSON 对象"));
         return;
     }
 
@@ -906,7 +906,7 @@ void AgvData::parseAgvState(const QJsonObject &data)
     // 校验字段是否存在
     if (!data.value("OptionalINFO").isObject())
     {
-        qWarning() << "AGV_STATE 错误: 缺少 OptionalINFO 字段或者 OptionalINFO 不是 JSON 对象";
+        logger->log(QStringLiteral("AgvData"), spdlog::level::warn, QStringLiteral("AGV_STATE 错误: 缺少 OptionalINFO 字段或者 OptionalINFO 不是 JSON 对象"));
         return;
     }
 

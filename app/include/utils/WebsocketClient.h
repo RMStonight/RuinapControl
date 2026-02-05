@@ -5,6 +5,7 @@
 #include <QWebSocket>
 #include <QTimer>
 #include <QThread>
+#include "LogManager.h"
 
 class WebsocketClient : public QObject
 {
@@ -48,6 +49,9 @@ private slots:
     void doReconnect();
 
 private:
+    // 日志管理器
+    LogManager *logger = &LogManager::instance();
+    
     QWebSocket *m_webSocket;    // WebSocket 指针
     QTimer *m_reconnectTimer;   // 重连定时器
     QString m_url;              // 保存连接地址

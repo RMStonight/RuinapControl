@@ -1,6 +1,5 @@
 #include "utils/ConfigManager.h"
 #include <QSettings>
-#include <QDebug>
 
 // 全局静态变量
 static ConfigManager *g_instance = nullptr;
@@ -34,6 +33,7 @@ void ConfigManager::load()
     m_mapPngFolder = settings.value("Folder/mapPng", "").toString();
     m_mapJsonFolder = settings.value("Folder/mapJson", "").toString();
     m_configFolder = settings.value("Folder/config", "").toString();
+    m_logFolder = settings.value("Folder/log", "").toString();
     // 网络通讯
     m_commIp = settings.value("Network/CommIp", "host.docker.internal").toString();
     m_commPort = settings.value("Network/CommPort", 9001).toInt();
@@ -47,8 +47,6 @@ void ConfigManager::load()
     // 系统选项
     m_debugMode = settings.value("System/DebugMode", false).toBool();
     m_fullScreen = settings.value("System/FullScreen", false).toBool();
-
-    qDebug() << "ConfigManager: 配置已加载, AGV ID =" << m_agvId;
 }
 
 void ConfigManager::save()
@@ -71,6 +69,7 @@ void ConfigManager::save()
     settings.setValue("Folder/mapPng", m_mapPngFolder);
     settings.setValue("Folder/mapJson", m_mapJsonFolder);
     settings.setValue("Folder/config", m_configFolder);
+    settings.setValue("Folder/log", m_logFolder);
     // 网络通讯
     settings.setValue("Network/CommIp", m_commIp);
     settings.setValue("Network/CommPort", m_commPort.load());
@@ -87,9 +86,19 @@ void ConfigManager::save()
 
     settings.sync(); // 强制写入磁盘
 
+    // 构造配置快照日志
+    QString allConfigs = QStringLiteral("\n========== 配置已保存 (快照) ==========");
+    for (const QString &key : settings.allKeys())
+    {
+        allConfigs += QString("\n%1 = %2").arg(key, settings.value(key).toString());
+    }
+    allConfigs += QStringLiteral("\n======================================");
+
+    // 记录日志并通知
+    logger->log(QStringLiteral("ConfigManager"), spdlog::level::warn, allConfigs);
+
     // 发送信号，通知所有界面更新
     emit configChanged();
-    qDebug() << "ConfigManager: 配置已保存并通知所有组件";
 }
 
 // --- Getters 实现 ---
@@ -144,6 +153,11 @@ QString ConfigManager::configFolder() const
 {
     QReadLocker locker(&m_lock);
     return m_configFolder;
+}
+QString ConfigManager::logFolder() const
+{
+    QReadLocker locker(&m_lock);
+    return m_logFolder;
 }
 // 网络通讯
 QString ConfigManager::commIp() const
@@ -249,6 +263,11 @@ void ConfigManager::setConfigFolder(const QString &folder)
 {
     QWriteLocker locker(&m_lock);
     m_configFolder = folder;
+}
+void ConfigManager::setLogFolder(const QString &folder)
+{
+    QWriteLocker locker(&m_lock);
+    m_logFolder = folder;
 }
 // 网络通讯
 void ConfigManager::setCommIp(const QString &ip)

@@ -7,6 +7,7 @@
 #include <QTimer>
 #include <QHBoxLayout>
 #include "BaseDisplayWidget.h"
+#include "LogManager.h"
 
 // 车体模型的命名方式
 #define MODEL_PNG "model.png"
@@ -50,6 +51,9 @@ private slots:
     void updateUi();
 
 private:
+    // 日志管理器
+    LogManager *logger = &LogManager::instance();
+
     // 车辆类型
     QPixmap m_agvImage; // 资源图片
     int vehicleType;    // 1 双叉叉车，2 四叉叉车

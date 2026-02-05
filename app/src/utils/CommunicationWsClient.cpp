@@ -1,5 +1,4 @@
 #include "CommunicationWsClient.h"
-#include <QDebug>
 
 CommunicationWsClient::CommunicationWsClient(QObject *parent)
     : QObject(parent), m_client(nullptr), m_thread(nullptr)
@@ -150,6 +149,9 @@ QJsonObject CommunicationWsClient::getTouchStateBody()
 {
     QJsonObject body;
 
+    // 用于判断是否需要打印，只有移动从 0 变为其他方向才打印一次
+    static int lastDir = 0;
+
     body.insert("page_control", agvData->pageControl());
     body.insert("task_cancel", agvData->taskCancel());
     body.insert("task_start", agvData->taskStart());
@@ -189,6 +191,15 @@ QJsonObject CommunicationWsClient::getTouchStateBody()
         body.insert("manual_vth", 0);
     }
 
+    // 仅在 page_control 开启且按下移动按键时才打印
+    if (agvData->pageControl() && agvData->manualDir() != 0 && agvData->manualDir() != lastDir)
+    {
+        QJsonDocument docBody(body);
+        QString bodyStr = docBody.toJson(QJsonDocument::Compact);
+        logger->log(QStringLiteral("CommunicationWsClient"), spdlog::level::info, QStringLiteral("TOUCH_STATE Body: %1").arg(bodyStr));
+    }
+
+    lastDir = agvData->manualDir();
     return body;
 }
 
@@ -196,7 +207,7 @@ QJsonObject CommunicationWsClient::getTouchStateBody()
 
 void CommunicationWsClient::onInternalConnected()
 {
-    qDebug() << "CommunicationWsClient: 连接建立";
+    logger->log(QStringLiteral("CommunicationWsClient"), spdlog::level::info, QStringLiteral("连接建立"));
     emit connectionStatusChanged(true);
 
     // 连接成功后，自动启动定时器
@@ -208,7 +219,7 @@ void CommunicationWsClient::onInternalConnected()
 
 void CommunicationWsClient::onInternalDisconnected()
 {
-    qDebug() << "CommunicationWsClient: 连接断开";
+    logger->log(QStringLiteral("CommunicationWsClient"), spdlog::level::err, QStringLiteral("连接断开"));
     emit connectionStatusChanged(false);
 
     // 连接断开后，自动停止定时器

@@ -5,6 +5,7 @@
 #include <QString>
 #include <QReadWriteLock>
 #include <atomic>
+#include "LogManager.h"
 
 // 枚举类型定义
 enum class UserRole
@@ -45,6 +46,7 @@ public:
     QString mapPngFolder() const;
     QString mapJsonFolder() const;
     QString configFolder() const;
+    QString logFolder() const;
     // 网络通信
     QString commIp() const;
     int commPort() const;
@@ -73,6 +75,7 @@ public:
     void setMapPngFolder(const QString &folder);
     void setMapJsonFolder(const QString &folder);
     void setConfigFolder(const QString &folder);
+    void setLogFolder(const QString &folder);
     // 网络通信
     void setCommIp(const QString &ip);
     void setCommPort(int port);
@@ -94,6 +97,9 @@ signals:
 private:
     explicit ConfigManager(QObject *parent = nullptr); // 私有构造
 
+    // 日志管理器
+    LogManager *logger = &LogManager::instance();
+
     // 特殊参数，不读取 config 配置文件
     std::atomic<int> m_currentUserRole; // 当前用户，1 operator，2 admin
 
@@ -111,6 +117,7 @@ private:
     QString m_mapPngFolder;
     QString m_mapJsonFolder;
     QString m_configFolder;
+    QString m_logFolder;
     // 网络通信
     QString m_commIp;
     std::atomic<int> m_commPort;

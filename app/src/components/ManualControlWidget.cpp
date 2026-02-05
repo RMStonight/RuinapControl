@@ -1,7 +1,6 @@
 #include "ManualControlWidget.h"
 #include <QHBoxLayout>
 #include <QGridLayout>
-#include <QDebug>
 #include <QGroupBox>
 
 ManualControlWidget::ManualControlWidget(QWidget *parent) : BaseDisplayWidget(parent)
@@ -75,10 +74,14 @@ void ManualControlWidget::initUi()
     chargeCheck->setStyleSheet("QCheckBox { font-size: 14px; } QCheckBox::indicator { width: 20px; height: 20px; }");
 
     connect(pageCheck, &QCheckBox::toggled, this, [this](bool checked)
-            { agvData->setPageControl(checked); });
+            { 
+                agvData->setPageControl(checked); 
+                logger->log(QStringLiteral("ManualControlWidget"), spdlog::level::info, QStringLiteral("页面控制切换为 %1").arg(checked)); });
 
     connect(chargeCheck, &QCheckBox::toggled, this, [this](bool checked)
-            { agvData->setChargeCmd(checked); });
+            { 
+                agvData->setChargeCmd(checked); 
+                logger->log(QStringLiteral("ManualControlWidget"), spdlog::level::info, QStringLiteral("手动充电切换为 %1").arg(checked)); });
 
     row2->addWidget(pageCheck);
     row2->addStretch();
@@ -175,6 +178,7 @@ QPushButton *ManualControlWidget::createMomentaryButton(ButtonType type, const Q
     // 处理按下逻辑
     connect(btn, &QPushButton::pressed, this, [=]()
             {
+                logger->log(QStringLiteral("ManualControlWidget"), spdlog::level::info, QStringLiteral("按下 type %1 %2").arg(static_cast<int>(type)).arg(text));
                 switch (type)
                 {
                 case ButtonType::Move:
@@ -208,6 +212,7 @@ QPushButton *ManualControlWidget::createMomentaryButton(ButtonType type, const Q
     // 处理松开逻辑
     connect(btn, &QPushButton::released, this, [=]()
             {
+                logger->log(QStringLiteral("ManualControlWidget"), spdlog::level::info, QStringLiteral("松开 type %1 %2").arg(static_cast<int>(type)).arg(text));
                 switch (type)
                 {
                 case ButtonType::Move:

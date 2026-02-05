@@ -5,6 +5,7 @@
 #include <QTimer>
 #include <QDebug>
 #include "AgvData.h"
+#include "LogManager.h"
 
 class PermissionManager : public QObject
 {
@@ -36,7 +37,7 @@ public:
 private slots:
     void onTimeout()
     {
-        qDebug() << "User inactive for 5 s, reverting to Operator role.";
+        logger->log(QStringLiteral("PermissionManager"), spdlog::level::warn, QStringLiteral("User inactive for 5 s, reverting to Operator role."));
         // 执行自动降权逻辑
         ConfigManager::instance()->setCurrentUserRole(UserRole::Operator);
 
@@ -52,6 +53,9 @@ private:
         // m_timeoutTimer.setInterval(30 * 60 * 1000); // 30 分钟
         connect(&m_timeoutTimer, &QTimer::timeout, this, &PermissionManager::onTimeout);
     }
+
+    // 日志管理器
+    LogManager *logger = &LogManager::instance();
 
     QTimer m_timeoutTimer;
 };

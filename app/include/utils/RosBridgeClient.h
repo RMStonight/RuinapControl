@@ -13,6 +13,7 @@
 #include <QJsonObject>
 #include <QJsonDocument>
 #include <QTimer>
+#include "LogManager.h"
 
 class RosBridgeClient : public QObject
 {
@@ -57,6 +58,9 @@ private:
     QByteArray extractByteArray(const QCborValue &val);
 
 private:
+    // 日志管理器
+    LogManager *logger = &LogManager::instance();
+    
     QWebSocket *m_webSocket;    // 改为指针，确保在正确的线程初始化
     QTimer *m_reconnectTimer;   // 重连定时器
     QString m_url;              // 记录连接地址

@@ -3,3 +3,5 @@
 app/build
 app/files/map
 app/files/points_and_path
+app/files/log
+app/include/spdlog

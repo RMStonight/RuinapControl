@@ -3,6 +3,7 @@
 
 #include <QObject>
 #include <QPointF>
+#include "LogManager.h"
 
 class MonitorWidget;
 
@@ -22,6 +23,9 @@ private:
 
 private:
     MonitorWidget *w;
+
+    // 日志管理器
+    LogManager *logger = &LogManager::instance();
 };
 
 #endif

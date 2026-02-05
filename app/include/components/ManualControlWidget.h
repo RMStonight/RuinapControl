@@ -10,15 +10,16 @@
 #include <QTimer>
 #include <AgvData.h>
 #include "ConfigManager.h"
+#include "LogManager.h"
 
 enum class ButtonType
 {
-    Move,   // 移动控制
-    Act,    // 动作控制
-    Cancel, // 取消任务
-    Start,  // 开始任务
-    Pause,  // 暂停任务
-    Resume  // 恢复任务
+    Move = 1,   // 移动控制
+    Act = 2,    // 动作控制
+    Cancel = 3, // 取消任务
+    Start = 4,  // 开始任务
+    Pause = 5,  // 暂停任务
+    Resume = 6  // 恢复任务
 };
 
 class ManualControlWidget : public BaseDisplayWidget
@@ -35,6 +36,9 @@ private slots:
     void updateUi();
 
 private:
+    // 日志管理器
+    LogManager *logger = &LogManager::instance();
+
     void initUi();
     // 统一创建按住触发按钮的函数
     QPushButton *createMomentaryButton(ButtonType type, const QString &text, const QString &color, int val);

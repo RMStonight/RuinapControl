@@ -4,7 +4,6 @@
 #include <QJsonObject>
 #include <QJsonDocument>
 #include <QVariant>
-#include <QDebug>
 
 OptionalInfoWidget::OptionalInfoWidget(QWidget *parent) : QScrollArea(parent)
 {

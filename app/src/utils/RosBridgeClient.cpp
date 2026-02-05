@@ -1,5 +1,4 @@
 #include "utils/RosBridgeClient.h"
-#include <QDebug>
 #include <cmath>
 #include <QDateTime>
 #include <QtMath>
@@ -55,7 +54,12 @@ void RosBridgeClient::connectToRos(const QString &url)
         m_reconnectTimer->stop();
     }
 
-    qDebug() << "RosBridge: Connecting to" << url << "in thread:" << QThread::currentThreadId();
+    logger->log(
+        QStringLiteral("RosBridgeClient"),
+        spdlog::level::info,
+        QStringLiteral("Connecting to %1 in thread: %2")
+            .arg(url)
+            .arg(reinterpret_cast<quintptr>(QThread::currentThreadId()), 0, 16));
     m_webSocket->open(QUrl(url));
 }
 
@@ -75,7 +79,7 @@ void RosBridgeClient::closeConnection()
 
 void RosBridgeClient::onConnected()
 {
-    qDebug() << "RosBridge: Connected!";
+    logger->log(QStringLiteral("RosBridgeClient"), spdlog::level::info, QStringLiteral("Connected!"));
     m_reconnectTimer->stop(); // 连接成功，停止重连定时器
     emit connected();
 
@@ -88,12 +92,12 @@ void RosBridgeClient::onConnected()
 // 处理 Socket 断开
 void RosBridgeClient::onSocketDisconnected()
 {
-    qDebug() << "RosBridge: Socket disconnected.";
+    logger->log(QStringLiteral("RosBridgeClient"), spdlog::level::err, QStringLiteral("RosBridge: Socket disconnected."));
     emit disconnected(); // 通知 UI
 
     if (m_needReconnect)
     {
-        qDebug() << "RosBridge: Reconnecting in" << m_reconnectTimer->interval() << "ms...";
+        logger->log(QStringLiteral("RosBridgeClient"), spdlog::level::warn, QStringLiteral("Reconnecting in %1 ms...").arg(m_reconnectTimer->interval()));
         m_reconnectTimer->start();
     }
 }
@@ -101,7 +105,7 @@ void RosBridgeClient::onSocketDisconnected()
 // 处理 Socket 错误
 void RosBridgeClient::onSocketError(QAbstractSocket::SocketError error)
 {
-    qDebug() << "RosBridge: Socket Error:" << error << m_webSocket->errorString();
+    logger->log(QStringLiteral("RosBridgeClient"), spdlog::level::err, QStringLiteral("Socket Error: %1 %2").arg(error).arg(m_webSocket->errorString()));
 
     // 如果是 ConnectionRefused (如 ROS 未启动)，Socket 不会进入 Connected 状态，
     // 可能也不会触发 disconnected 信号，所以这里也需要触发重连逻辑。
@@ -117,7 +121,7 @@ void RosBridgeClient::doReconnect()
 {
     if (m_needReconnect && !m_url.isEmpty())
     {
-        qDebug() << "RosBridge: Attempting to reconnect...";
+        logger->log(QStringLiteral("RosBridgeClient"), spdlog::level::warn, QStringLiteral("Attempting to reconnect..."));
         if (m_webSocket)
         {
             m_webSocket->abort(); // 确保处于关闭状态
@@ -129,9 +133,10 @@ void RosBridgeClient::doReconnect()
 // 发布重定位
 void RosBridgeClient::setInitialPose(const QPointF &pos, double angle)
 {
-    qDebug() << "Enter setInitialPose";
-    if (!m_webSocket || !m_webSocket->isValid()) {
-        qWarning() << "RosBridge: Cannot set pose, socket not connected.";
+    logger->log(QStringLiteral("RosBridgeClient"), spdlog::level::warn, QStringLiteral("Enter setInitialPose"));
+    if (!m_webSocket || !m_webSocket->isValid())
+    {
+        logger->log(QStringLiteral("RosBridgeClient"), spdlog::level::err, QStringLiteral("Cannot set pose, socket not connected."));
         return;
     }
 
@@ -150,7 +155,7 @@ void RosBridgeClient::setInitialPose(const QPointF &pos, double angle)
     // Pose
     QJsonObject pose;
     QJsonObject poseInner;
-    
+
     // Position
     QJsonObject position;
     position["x"] = pos.x();
@@ -170,7 +175,8 @@ void RosBridgeClient::setInitialPose(const QPointF &pos, double angle)
 
     // Covariance (标准重定位通常需要一个协方差矩阵，ROS 默认 36 个 0 即可)
     QJsonArray covariance;
-    for(int i = 0; i < 36; ++i) covariance.append(0.0);
+    for (int i = 0; i < 36; ++i)
+        covariance.append(0.0);
     pose["covariance"] = covariance;
 
     msg["pose"] = pose;
@@ -184,8 +190,8 @@ void RosBridgeClient::setInitialPose(const QPointF &pos, double angle)
     // 4. 发送
     QJsonDocument doc(publishOp);
     m_webSocket->sendTextMessage(doc.toJson(QJsonDocument::Compact));
-    
-    qDebug() << "RosBridge: Sent initial pose x:" << pos.x() << " y:" << pos.y() << " yaw:" << angle;
+
+    logger->log(QStringLiteral("RosBridgeClient"), spdlog::level::warn, QStringLiteral("Sent initial pose x: %1, y: %2, yaw: %3").arg(pos.x()).arg(pos.y()).arg(angle));
 }
 
 // 订阅

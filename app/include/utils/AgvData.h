@@ -11,6 +11,7 @@
 #include <atomic>
 #include "RosBridgeClient.h"
 #include <QThread>
+#include "LogManager.h"
 
 // 为了让信号槽能用，建议定义别名
 using AgvInt = AgvAttribute<int>;
@@ -152,6 +153,9 @@ private:
 
     // 初始化值
     void initData();
+
+    // 日志管理器
+    LogManager *logger = &LogManager::instance();
 
     // rosClient
     RosBridgeClient *m_rosClient;

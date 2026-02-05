@@ -4,7 +4,7 @@
         {
             "label": "CMake Build", // 记住这个名字，下面要用
             "type": "shell",
-            "command": "cmake --build build -j",
+            "command": "cmake --build build -j 5",
             "group": "build",
             "problemMatcher": ["$gcc"]
         }

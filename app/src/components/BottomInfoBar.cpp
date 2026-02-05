@@ -1,7 +1,6 @@
 #include "components/BottomInfoBar.h"
 #include <QGridLayout>
 #include <QLabel>
-#include <QDebug>
 #include "utils/AgvData.h"
 
 // 定义一个简单的结构体用于配置
@@ -242,6 +241,7 @@ void BottomInfoBar::updateUi()
     // mapId
     if (agvData->mapId().value != m_mapId)
     {
+        logger->log(QStringLiteral("BottomInfoBar"), spdlog::level::warn, QStringLiteral("Map id changed! From %1 to %2").arg(m_mapId).arg(agvData->mapId().value));
         m_mapId = agvData->mapId().value;
         emit mapIdChanged(m_mapId);
     }

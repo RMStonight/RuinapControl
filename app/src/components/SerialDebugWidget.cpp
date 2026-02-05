@@ -31,11 +31,28 @@ void SerialDebugWidget::initUi()
 
     // 打开/关闭按钮
     m_switchBtn = new QPushButton("打开串口");
-    m_switchBtn->setFixedSize(120, 40);
+    m_switchBtn->setFixedSize(100, 40);
     m_switchBtn->setStyleSheet("QPushButton { background-color: #4CAF50; color: white; border-radius: 4px; font-weight: bold; }"
                                "QPushButton:checked { background-color: #F44336; }");
     m_switchBtn->setCheckable(true);
     topLayout->addWidget(m_switchBtn);
+
+    // 弹簧，将后面的按钮推向最右侧
+    topLayout->addStretch();
+
+    // 保存按钮
+    m_saveBtn = new QPushButton("保存");
+    m_saveBtn->setFixedSize(100, 40);
+    m_saveBtn->setStyleSheet(
+        "QPushButton {"
+        "  background-color: #2196F3;" // 蓝色
+        "  color: white;"
+        "  border-radius: 4px;"
+        "  font-weight: bold;"
+        "}"
+        "QPushButton:hover { background-color: #1E88E5; }"
+        "QPushButton:pressed { background-color: #1565C0; }");
+    topLayout->addWidget(m_saveBtn);
 
     // 弹簧，将后面的按钮推向最右侧
     topLayout->addStretch();
@@ -73,6 +90,7 @@ void SerialDebugWidget::initUi()
 
     connect(m_switchBtn, &QPushButton::clicked, this, &SerialDebugWidget::toggleSerialPort);
     connect(m_clearBtn, &QPushButton::clicked, m_logDisplay, &QPlainTextEdit::clear);
+    connect(m_saveBtn, &QPushButton::clicked, this, &SerialDebugWidget::saveLogToFile);
 }
 
 void SerialDebugWidget::toggleSerialPort()
@@ -80,7 +98,6 @@ void SerialDebugWidget::toggleSerialPort()
     if (!m_serialPort->isOpen())
     {
         // 从 ConfigManager 读取配置
-        auto cfg = ConfigManager::instance();
         m_serialPort->setPortName(cfg->microControllerCom());
         m_serialPort->setBaudRate(cfg->microControllerComBaudrate());
         m_serialPort->setDataBits(QSerialPort::Data8);
@@ -93,11 +110,13 @@ void SerialDebugWidget::toggleSerialPort()
             m_switchBtn->setText("关闭串口");
             m_switchBtn->setChecked(true);
             m_logDisplay->appendPlainText(tr("[%1] [%2] 串口已打开").arg(cfg->microControllerCom()).arg(cfg->microControllerComBaudrate()));
+            logger->log(QStringLiteral("SerialDebugWidget"), spdlog::level::warn, QStringLiteral("[%1] [%2] 串口已打开").arg(cfg->microControllerCom()).arg(cfg->microControllerComBaudrate()));
         }
         else
         {
             m_switchBtn->setChecked(false);
             m_logDisplay->appendPlainText(tr("错误：[%1] [%2] 无法打开串口").arg(cfg->microControllerCom()).arg(cfg->microControllerComBaudrate()));
+            logger->log(QStringLiteral("SerialDebugWidget"), spdlog::level::err, QStringLiteral("错误：[%1] [%2] 无法打开串口").arg(cfg->microControllerCom()).arg(cfg->microControllerComBaudrate()));
         }
     }
     else
@@ -106,6 +125,7 @@ void SerialDebugWidget::toggleSerialPort()
         m_switchBtn->setText("打开串口");
         m_switchBtn->setChecked(false);
         m_logDisplay->appendPlainText("串口已关闭");
+        logger->log(QStringLiteral("SerialDebugWidget"), spdlog::level::warn, QStringLiteral("串口已关闭"));
     }
 }
 
@@ -119,6 +139,7 @@ void SerialDebugWidget::readData()
     {
         m_buffer.clear();
         m_logDisplay->appendPlainText("警告：缓冲区过大，已强制清理");
+        logger->log(QStringLiteral("SerialDebugWidget"), spdlog::level::warn, QStringLiteral("缓冲区过大，已强制清理"));
         return;
     }
 
@@ -149,4 +170,43 @@ void SerialDebugWidget::readData()
 
     // 自动滚动底部
     m_logDisplay->verticalScrollBar()->setValue(m_logDisplay->verticalScrollBar()->maximum());
+}
+
+void SerialDebugWidget::saveLogToFile()
+{
+    QString logPath = cfg->logFolder();
+
+    if (logPath.isEmpty())
+    {
+        QString logPath = QCoreApplication::applicationDirPath() + "/logs";
+    }
+
+    QDir dir;
+    if (!dir.exists(logPath))
+    {
+        dir.mkpath(logPath);
+    }
+
+    // 2. 构造完整文件路径
+    QString fullPath = QDir(logPath).filePath("serial.log");
+
+    // 3. 写入文件 (QIODevice::WriteOnly | QIODevice::Text 会覆盖旧文件，
+    // 若想追加请使用 QIODevice::Append)
+    QFile file(fullPath);
+    if (file.open(QIODevice::WriteOnly | QIODevice::Text))
+    {
+        QTextStream out(&file);
+        out.setCodec("UTF-8"); // 确保编码正确
+        out << m_logDisplay->toPlainText();
+        file.close();
+
+        // 可选：给用户一个反馈
+        m_logDisplay->appendPlainText(tr("--- 日志已保存至: %1 ---").arg(fullPath));
+        logger->log(QStringLiteral("SerialDebugWidget"), spdlog::level::info, QStringLiteral("日志保存成功: %1").arg(fullPath));
+    }
+    else
+    {
+        m_logDisplay->appendPlainText(tr("--- 错误：无法保存日志文件 ---"));
+        logger->log(QStringLiteral("SerialDebugWidget"), spdlog::level::err, QStringLiteral("无法创建文件: %1").arg(fullPath));
+    }
 }

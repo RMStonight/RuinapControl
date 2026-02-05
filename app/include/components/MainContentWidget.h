@@ -9,6 +9,8 @@
 #include "IoWidget.h"
 #include "ManualControlWidget.h"
 #include "SerialDebugWidget.h"
+#include "LogDisplayWidget.h"
+#include "LogManager.h"
 
 // 前置声明
 class QTabWidget;
@@ -31,6 +33,9 @@ private slots:
     void onTabChanged(int index);
 
 private:
+    // 日志管理器
+    LogManager *logger = &LogManager::instance();
+
     void initLayout();
 
     // 辅助函数：快速创建一个带有简单文字的空白页，用于填充 Tab
@@ -45,6 +50,7 @@ private:
     MonitorWidget *m_monitorTab;             //  monitor 标签页
     IoWidget *m_ioTab;                       //  Io 标签页
     SerialDebugWidget *m_serialTab;          //  串口调试标签页
+    LogDisplayWidget *m_logTab;              //  日志记录标签页
 
     BottomInfoBar *m_bottomBar; // 底部栏
 };

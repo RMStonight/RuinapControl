@@ -1,7 +1,6 @@
 #include "IoWidget.h"
 #include <QGridLayout>
 #include <QVBoxLayout>
-#include <QDebug>
 #include "utils/AgvData.h"
 
 IoWidget::IoWidget(QWidget *parent) : BaseDisplayWidget(parent)

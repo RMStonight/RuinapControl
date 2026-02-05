@@ -9,6 +9,7 @@
 #include <QTimer>
 #include <QEvent>
 #include <QMouseEvent>
+#include "LogManager.h"
 
 // 左上角 logo 的命名方式
 #define TOP_LEFT_LOGO "top_left_logo.png"
@@ -47,6 +48,9 @@ private:
     void initLayout(); // 内部初始化布局
 
     ConfigManager *cfg;
+
+    // 日志管理器
+    LogManager *logger = &LogManager::instance();
 
     // UI 控件指针
     QLabel *m_logoLabel;

@@ -2,6 +2,7 @@
 #define SYSTEMSETTINGSWIDGET_H
 
 #include <QWidget>
+#include "LogManager.h"
 
 class QLineEdit;
 class QSpinBox;
@@ -25,6 +26,9 @@ protected:
     void showEvent(QShowEvent *event) override;
 
 private:
+    // 日志管理器
+    LogManager *logger = &LogManager::instance();
+    
     void initUI();
 
     QLabel *createSectionLabel(const QString &text);
@@ -44,6 +48,7 @@ private:
     QLineEdit *m_mapPngFolderEdit;
     QLineEdit *m_mapJsonFolderEdit;
     QLineEdit *m_configFolderEdit;
+    QLineEdit *m_logFolderEdit;
 
     // 网络设置
     QLineEdit *m_commIpEdit;

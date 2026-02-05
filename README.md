@@ -10,6 +10,13 @@
 
 <img alt="" src="./imgs/7-log.png" width="45%">&nbsp;&nbsp;&nbsp;<img alt="" src="./imgs/8-setting.png" width="45%">
 
+## 20260205 V1.2.3
+
+* 引入 spdlog 后，编译时将 -j 改为 -j 5
+* 新增 LogManager 单例管理日志
+* 在各个类中使用 LogManager 进行日志写入
+* 新增 LogDisplayWidget 标签页，用于直接查看日志
+
 ## 20260204 V1.2.2
 
 * 新增系统参数栏【其他通讯设置】，并新增两个参数 单片机串口、单片机波特率，可在系统设置中修改

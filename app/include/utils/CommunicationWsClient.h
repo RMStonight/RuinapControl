@@ -47,6 +47,9 @@ private:
     WebsocketClient *m_client;
     QThread *m_thread;
 
+    // 日志管理器
+    LogManager *logger = &LogManager::instance();
+    
     QTimer *m_pollTimer;             // 用于持续触发请求
     const int POLL_INTERVAL_MS = 50; // 轮询间隔
     uint64_t dataStamps;             // 数据戳

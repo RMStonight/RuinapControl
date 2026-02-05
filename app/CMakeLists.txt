@@ -34,6 +34,7 @@ set(SOURCES
     src/components/IoWidget.cpp
     src/components/ManualControlWidget.cpp
     src/components/SerialDebugWidget.cpp
+    src/components/LogDisplayWidget.cpp
 
     include/utils/ConfigManager.h
     include/utils/RosBridgeClient.h
@@ -43,6 +44,7 @@ set(SOURCES
     include/utils/AgvData.h
     include/utils/PermissionManager.h
     include/utils/GlobalEventFilter.h
+    include/utils/LogManager.h
     include/monitor/MapDataManager.h
     include/monitor/MonitorInteractionHandler.h
     include/monitor/RelocationController.h
@@ -58,6 +60,7 @@ set(SOURCES
     include/components/BaseDisplayWidget.h
     include/components/ManualControlWidget.h
     include/components/SerialDebugWidget.h
+    include/components/LogDisplayWidget.h
     include/layers/BaseLayer.h
     include/layers/GridLayer.h
     include/layers/MapLayer.h

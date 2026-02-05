@@ -2,6 +2,7 @@
 #include <QPainter>
 #include "utils/AgvData.h"
 #include "utils/ConfigManager.h"
+#include "qdir.h"
 
 VehicleInfoWidget::VehicleInfoWidget(QWidget *parent) : BaseDisplayWidget(parent)
 {
@@ -13,13 +14,8 @@ VehicleInfoWidget::VehicleInfoWidget(QWidget *parent) : BaseDisplayWidget(parent
 
     // 加载图片
     QString resourceFolder = cfg->resourceFolder();
-    // 如果相对路径不是以 / 结尾则需要添加
-    if (!resourceFolder.endsWith("/"))
-    {
-        resourceFolder += "/";
-    }
-    resourceFolder += MODEL_PNG;
-    m_agvImage.load(resourceFolder);
+    QString resourceFolderUrl = QDir(resourceFolder).filePath(MODEL_PNG);
+    m_agvImage.load(resourceFolderUrl);
 
     // 如果图片加载失败，生成一个灰色的占位图，防止程序崩溃
     if (m_agvImage.isNull())

@@ -7,6 +7,10 @@
 #include <QPushButton>
 #include <QVBoxLayout>
 #include "ConfigManager.h"
+#include "LogManager.h"
+#include <QFile>
+#include <QDir>
+#include <QTextStream>
 
 class SerialDebugWidget : public BaseDisplayWidget
 {
@@ -18,8 +22,14 @@ public:
 private slots:
     void toggleSerialPort();
     void readData();
+    void saveLogToFile();
 
 private:
+    // 日志管理器
+    LogManager *logger = &LogManager::instance();
+
+    ConfigManager *cfg = ConfigManager::instance();
+
     void initUi();
 
     QByteArray m_buffer; // 增加一个缓冲区
@@ -27,6 +37,7 @@ private:
     QPlainTextEdit *m_logDisplay;
     QPushButton *m_switchBtn;
     QPushButton *m_clearBtn;
+    QPushButton *m_saveBtn;
 
     const int MAX_LINE_COUNT = 2000; // 行数限制
 };

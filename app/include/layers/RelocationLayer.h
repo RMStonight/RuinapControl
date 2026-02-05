@@ -4,7 +4,6 @@
 #include "BaseLayer.h"
 #include <QPointF>
 #include <QtMath>
-#include <QDebug>
 
 class RelocationLayer : public BaseLayer {
 public:

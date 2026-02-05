@@ -4,7 +4,6 @@
 #include <QLabel>
 #include <QFile>
 #include <QTextStream>
-#include <QDebug>
 #include "components/SystemSettingsWidget.h"
 
 MainContentWidget::MainContentWidget(QWidget *parent) : QWidget(parent)
@@ -39,7 +38,7 @@ void MainContentWidget::initLayout()
     }
     else
     {
-        qWarning() << "Error: Failed to load stylesheet from :/styles/main_content.qss";
+        logger->log(QStringLiteral("MainContentWidget"), spdlog::level::err, QStringLiteral("Error: Failed to load stylesheet from :/styles/main_content.qss"));
     }
 
     // 设置 Tab 扩展属性 (触控屏友好)
@@ -86,7 +85,8 @@ void MainContentWidget::initLayout()
     // ==========================================
     // Tab 7: 日志记录
     // ==========================================
-    m_tabWidget->addTab(createPlaceholderTab("日志记录"), "日志记录");
+    m_logTab = new LogDisplayWidget(this);
+    m_tabWidget->addTab(m_logTab, "日志记录");
 
     // ==========================================
     // Tab 8: 系统设置页面

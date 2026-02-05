@@ -9,6 +9,7 @@
 #include <QString>
 #include <QColor>
 #include "layers/PointPathLayer.h" // 必须包含以使用 MapPointData 和 MapPathData 结构体
+#include "LogManager.h"
 
 class MapDataManager : public QObject {
     Q_OBJECT
@@ -27,6 +28,9 @@ public:
     const QMap<int, QJsonObject>& getPointMap() const;
 
 private:
+    // 日志管理器
+    LogManager *logger = &LogManager::instance();
+
     // 内部缓存，Key 为点位 ID
     QMap<int, QJsonObject> m_pointMap;
 };

@@ -14,13 +14,13 @@
 #include <QPainter>
 #include <QWheelEvent>
 #include <QMouseEvent>
-#include <QDebug>
 #include <QLineF>
 #include <QtMath>
 #include <QFile>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonArray>
+#include "qdir.h"
 
 MonitorWidget::MonitorWidget(QWidget *parent) : BaseDisplayWidget(parent)
 {
@@ -134,13 +134,13 @@ void MonitorWidget::handleMapIdChanged(int mapId)
 void MonitorWidget::handleMapName(int mapId)
 {
     QString mapUrl = ConfigManager::instance()->mapPngFolder();
-    if (!mapUrl.endsWith("/"))
-        mapUrl += "/";
 
     QString newMapName = QString::number(mapId) + ".png";
+
     if (m_mapName != newMapName)
     {
-        loadLocalMap(mapUrl + newMapName, 0, 0);
+        QString mapUrlPath = QDir(mapUrl).filePath(newMapName);
+        loadLocalMap(mapUrlPath, 0, 0);
         m_mapName = newMapName;
     }
 }
@@ -148,13 +148,12 @@ void MonitorWidget::handleMapName(int mapId)
 void MonitorWidget::handleMapJsonName(int mapId)
 {
     QString mapJsonUrl = ConfigManager::instance()->mapJsonFolder();
-    if (!mapJsonUrl.endsWith("/"))
-        mapJsonUrl += "/";
 
     QString newMapJsonName = "points_and_path_" + QString::number(mapId) + ".json";
     if (m_mapJsonName != newMapJsonName)
     {
-        loadMapJson(mapJsonUrl + newMapJsonName);
+        QString mapJsonUrlPath = QDir(mapJsonUrl).filePath(newMapJsonName);
+        loadMapJson(mapJsonUrlPath);
         m_mapJsonName = newMapJsonName;
     }
 }

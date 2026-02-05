@@ -1,7 +1,6 @@
 #include "WebsocketClient.h"
-#include <QDebug>
 
-WebsocketClient::WebsocketClient(QObject *parent) 
+WebsocketClient::WebsocketClient(QObject *parent)
     : QObject(parent), m_webSocket(nullptr), m_needReconnect(true)
 {
     // 初始化重连定时器
@@ -34,33 +33,37 @@ void WebsocketClient::connectToServer(const QString &url)
     if (!m_webSocket)
     {
         m_webSocket = new QWebSocket();
-        
+
         connect(m_webSocket, &QWebSocket::connected, this, &WebsocketClient::onConnected);
         connect(m_webSocket, &QWebSocket::disconnected, this, &WebsocketClient::onSocketDisconnected);
-        
+
         // 兼容 Qt 5.15+ 的错误信号写法
         connect(m_webSocket, QOverload<QAbstractSocket::SocketError>::of(&QWebSocket::error),
                 this, &WebsocketClient::onSocketError);
-        
+
         connect(m_webSocket, &QWebSocket::textMessageReceived, this, &WebsocketClient::onTextMessageReceived);
         connect(m_webSocket, &QWebSocket::binaryMessageReceived, this, &WebsocketClient::onBinaryMessageReceived);
     }
 
     // 如果之前正在等待重连，先停止定时器，立即尝试连接
-    if (m_reconnectTimer->isActive()) 
+    if (m_reconnectTimer->isActive())
         m_reconnectTimer->stop();
 
-    qDebug() << "WebsocketClient: Connecting to" << url << "in thread:" << QThread::currentThreadId();
+    logger->log(QStringLiteral("WebsocketClient"),
+                spdlog::level::info,
+                QStringLiteral("Connecting to %1 in thread: %2")
+                    .arg(url)
+                    .arg(reinterpret_cast<quintptr>(QThread::currentThreadId()), 0, 16));
     m_webSocket->open(QUrl(url));
 }
 
 void WebsocketClient::closeConnection()
 {
     m_needReconnect = false; // 用户主动断开，禁止自动重连
-    if (m_reconnectTimer) 
+    if (m_reconnectTimer)
         m_reconnectTimer->stop();
-    
-    if (m_webSocket) 
+
+    if (m_webSocket)
         m_webSocket->close();
 }
 
@@ -72,7 +75,7 @@ void WebsocketClient::sendTextMessage(const QString &message)
     }
     else
     {
-        qWarning() << "WebsocketClient: Cannot send message, socket not connected.";
+        logger->log(QStringLiteral("WebsocketClient"), spdlog::level::warn, QStringLiteral("Cannot send message, socket not connected."));
     }
 }
 
@@ -84,26 +87,26 @@ void WebsocketClient::sendBinaryMessage(const QByteArray &data)
     }
     else
     {
-        qWarning() << "WebsocketClient: Cannot send binary data, socket not connected.";
+        logger->log(QStringLiteral("WebsocketClient"), spdlog::level::warn, QStringLiteral("Cannot send binary data, socket not connected."));
     }
 }
 
 void WebsocketClient::onConnected()
 {
-    qDebug() << "WebsocketClient: Connected!";
+    logger->log(QStringLiteral("WebsocketClient"), spdlog::level::info, QStringLiteral("Connected!"));
     m_reconnectTimer->stop(); // 连接成功，停止重连倒计时
     emit connected();
 }
 
 void WebsocketClient::onSocketDisconnected()
 {
-    qDebug() << "WebsocketClient: Disconnected.";
+    logger->log(QStringLiteral("WebsocketClient"), spdlog::level::err, QStringLiteral("Disconnected!"));
     emit disconnected();
 
     // 只有在非主动关闭的情况下才重连
     if (m_needReconnect)
     {
-        qDebug() << "WebsocketClient: Reconnecting in" << m_reconnectTimer->interval() << "ms...";
+        logger->log(QStringLiteral("WebsocketClient"), spdlog::level::warn, QStringLiteral("Reconnecting in %1 ms...").arg(m_reconnectTimer->interval()));
         m_reconnectTimer->start();
     }
 }
@@ -111,7 +114,7 @@ void WebsocketClient::onSocketDisconnected()
 void WebsocketClient::onSocketError(QAbstractSocket::SocketError error)
 {
     QString errStr = m_webSocket->errorString();
-    qDebug() << "WebsocketClient: Error:" << error << errStr;
+    logger->log(QStringLiteral("WebsocketClient"), spdlog::level::err, QStringLiteral("Error: %1 %2").arg(error).arg(errStr));
     emit errorOccurred(errStr);
 
     // 如果连接被拒绝（服务没起）或其他网络错误，也触发重连机制
@@ -125,11 +128,11 @@ void WebsocketClient::doReconnect()
 {
     if (m_needReconnect && !m_url.isEmpty())
     {
-        qDebug() << "WebsocketClient: Attempting to reconnect...";
-        if (m_webSocket) 
+        logger->log(QStringLiteral("WebsocketClient"), spdlog::level::warn, QStringLiteral("Attempting to reconnect..."));
+        if (m_webSocket)
         {
-             m_webSocket->abort(); // 确保复位状态
-             m_webSocket->open(QUrl(m_url));
+            m_webSocket->abort(); // 确保复位状态
+            m_webSocket->open(QUrl(m_url));
         }
     }
 }

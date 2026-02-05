@@ -4,6 +4,7 @@
 #include <QWidget>
 #include <QMap>
 #include <QTimer>
+#include "LogManager.h"
 
 class QGridLayout;
 class QLabel;
@@ -26,6 +27,9 @@ signals:
     void mapIdChanged(int mapId);
 
 private:
+    // 日志管理器
+    LogManager *logger = &LogManager::instance();
+
     const QString lblKeyStyle = "color: #666666; font-size: 12px;";
     const QString lblValueStyleGreen = "color: #007055; font-size: 13px;";
     const QString lblValueStyleRed = "color: red; font-weight: bold; font-size: 13px;";
@@ -38,7 +42,7 @@ private:
     QMap<QString, QLabel *> m_valueLabels;
 
     // 特别记录 mapId
-    int m_mapId;
+    int m_mapId = -1;
 
     // 定时器更新 UI
     QTimer *m_updateTimer;

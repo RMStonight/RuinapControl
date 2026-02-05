@@ -4,7 +4,6 @@
 #include "BaseLayer.h"
 #include <QtMath>
 #include "utils/ConfigManager.h"
-#include <QDebug>
 
 class AgvLayer : public BaseLayer
 {
