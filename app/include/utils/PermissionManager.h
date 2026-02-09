@@ -6,6 +6,7 @@
 #include <QDebug>
 #include "AgvData.h"
 #include "LogManager.h"
+#include "ConfigManager.h"
 
 class PermissionManager : public QObject
 {
@@ -48,11 +49,15 @@ private slots:
 private:
     explicit PermissionManager(QObject *parent = nullptr) : QObject(parent)
     {
+        int m_seconds = cfg->adminDuration();
         m_timeoutTimer.setSingleShot(true);
-        m_timeoutTimer.setInterval(5 * 1000); // 5 秒钟
+        m_timeoutTimer.setInterval(m_seconds * 1000);
         // m_timeoutTimer.setInterval(30 * 60 * 1000); // 30 分钟
         connect(&m_timeoutTimer, &QTimer::timeout, this, &PermissionManager::onTimeout);
     }
+
+    // 系统参数
+    ConfigManager *cfg = ConfigManager::instance();
 
     // 日志管理器
     LogManager *logger = &LogManager::instance();

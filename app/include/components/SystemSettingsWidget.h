@@ -3,6 +3,7 @@
 
 #include <QWidget>
 #include "LogManager.h"
+#include "utils/ConfigManager.h"
 
 class QLineEdit;
 class QSpinBox;
@@ -25,10 +26,16 @@ public:
 protected:
     void showEvent(QShowEvent *event) override;
 
+private slots:
+    void updatePermissionView();
+
 private:
-    // 日志管理器
-    LogManager *logger = &LogManager::instance();
-    
+    QWidget *m_mainContentWrapper; // 包装原有的所有 UI
+    QWidget *m_permissionMask;     // 权限提示层
+
+    LogManager *logger = &LogManager::instance();   // 日志管理器
+    ConfigManager *cfg = ConfigManager::instance(); // 系统参数
+
     void initUI();
 
     QLabel *createSectionLabel(const QString &text);
@@ -63,6 +70,7 @@ private:
     QComboBox *m_microControllerComBaudrateCombo;
 
     // 系统选项
+    QSpinBox *m_adminDurationBox;
     QCheckBox *m_debugModeCheck;
     QCheckBox *m_fullScreenCheck;
 

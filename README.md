@@ -10,6 +10,14 @@
 
 <img alt="" src="./imgs/7-log.png" width="45%">&nbsp;&nbsp;&nbsp;<img alt="" src="./imgs/8-setting.png" width="45%">
 
+## 20260209 V1.2.4
+
+* 新增系统参数 adminDuration
+* PermissionManager 中不再固定管理员的权限时长，而是读取 adminDuration
+* SerialDebug 和 SystemSettings 页面现在会通过系统参数的 currentUserRole 来判断是否显示页面内容
+* LogDisplay 优化，新增【锁定/解锁滚动】按钮、新增过滤时的加载提示层
+* SerialDebug、LogDisplay 的按钮操作区域移动至下方
+
 ## 20260205 V1.2.3
 
 * 引入 spdlog 后，编译时将 -j 改为 -j 5

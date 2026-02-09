@@ -6,12 +6,15 @@
 #include <QPlainTextEdit>
 #include <QCheckBox>
 #include <QList>
+#include <QPushButton>
 
 // 定义单条日志结构体
-struct LogEntry {
+struct LogEntry
+{
     QString time;
     QString level;
     QString msg;
+    QString formattedHtml;
 };
 
 class LogDisplayWidget : public BaseDisplayWidget
@@ -26,18 +29,24 @@ private slots:
 
 private:
     void initUi();
-    void refreshDisplay();  // 根据当前缓存和筛选逻辑刷新 UI
+    void refreshDisplay(); // 根据当前缓存和筛选逻辑刷新 UI
 
     QPlainTextEdit *m_logDisplay;
     QCheckBox *m_infoCheck;
     QCheckBox *m_warnCheck;
     QCheckBox *m_errorCheck;
 
-    QMap<QString, QCheckBox*> m_filterMap;
-    
+    QMap<QString, QCheckBox *> m_filterMap;
+
     // 日志缓存列表
     QList<LogEntry> m_logCache;
-    const int MAX_LOG_LINES = 2000; 
+    const int MAX_LOG_LINES = 2000;
+
+    bool m_autoScroll = true; // 默认为开启
+    QPushButton *m_lockScrollBtn;
+
+    QWidget *m_loadingOverlay; // 加载遮罩
+    void showLoading(bool show);
 };
 
 #endif

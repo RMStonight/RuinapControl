@@ -11,7 +11,6 @@
 #include <QSettings>
 #include <QMessageBox>
 #include <QFile>
-#include "utils/ConfigManager.h"
 #include <QApplication>
 #include <QMessageBox>
 #include <QComboBox>
@@ -21,18 +20,43 @@
 SystemSettingsWidget::SystemSettingsWidget(QWidget *parent) : QWidget(parent)
 {
     initUI();
+    connect(cfg, &ConfigManager::userRoleChanged, this, &SystemSettingsWidget::updatePermissionView);
+
     loadSettings(); // 构造时自动加载已有配置
+}
+
+void SystemSettingsWidget::updatePermissionView()
+{
+    bool isAdmin = (cfg->currentUserRole() == UserRole::Admin);
+    m_mainContentWrapper->setVisible(isAdmin);
+    m_permissionMask->setVisible(!isAdmin);
+
+    if (isAdmin)
+    {
+        loadSettings(); // 权限提升时自动加载最新配置
+    }
 }
 
 // 页面载入时触发
 void SystemSettingsWidget::showEvent(QShowEvent *event)
 {
     QWidget::showEvent(event);
-    loadSettings(); // 进入页面时重新载入一次配置
+
+    // 权限校验
+    updatePermissionView();
 }
 
 void SystemSettingsWidget::initUI()
 {
+    // 1. 创建一个总布局，用于区分正常显示以及权限不足时的提示
+    QVBoxLayout *rootLayout = new QVBoxLayout(this);
+    rootLayout->setContentsMargins(0, 0, 0, 0);
+
+    // 2. 业务内容包装
+    m_mainContentWrapper = new QWidget(this);
+    QVBoxLayout *wrapperLayout = new QVBoxLayout(m_mainContentWrapper);
+    wrapperLayout->setContentsMargins(0, 0, 0, 0);
+
     // 从 QSS 文件加载
     QFile file(":/styles/system_settings.qss");
     if (file.open(QIODevice::ReadOnly | QIODevice::Text))
@@ -45,11 +69,6 @@ void SystemSettingsWidget::initUI()
     {
         logger->log(QStringLiteral("SystemSettingsWidget"), spdlog::level::err, QStringLiteral("Failed to load stylesheet from :/styles/main_content.qss!"));
     }
-
-    // 设置主窗口布局 (最外层)
-    QVBoxLayout *mainLayout = new QVBoxLayout(this);
-    mainLayout->setContentsMargins(0, 0, 0, 0); // 去除外层边距，让滚动条贴边
-    mainLayout->setSpacing(0);
 
     // 创建滚动区域
     QScrollArea *scrollArea = new QScrollArea(this);
@@ -240,10 +259,14 @@ void SystemSettingsWidget::initUI()
     // ==========================================
     contentLayout->addWidget(createSectionLabel("系统运行选项"));
 
-    QVBoxLayout *sysLayout = new QVBoxLayout(); // Checkbox 用垂直布局更好看
-    sysLayout->setSpacing(10);
-    // 给 Checkbox 左侧留点空白，对齐上面的输入框
-    sysLayout->setContentsMargins(20, 0, 0, 0);
+    QFormLayout *sysLayout = new QFormLayout();
+    sysLayout->setLabelAlignment(Qt::AlignLeft | Qt::AlignVCenter);
+    sysLayout->setVerticalSpacing(10);
+
+    m_adminDurationBox = new QSpinBox(this);
+    m_adminDurationBox->setRange(10, 60);
+    m_adminDurationBox->setSuffix(" s"); // 显示单位
+    m_adminDurationBox->setFixedWidth(120);
 
     m_debugModeCheck = new QCheckBox("开启调试日志 (Debug Log)", this);
     m_fullScreenCheck = new QCheckBox("开启全屏模式 (隐藏标题栏)", this);
@@ -253,8 +276,9 @@ void SystemSettingsWidget::initUI()
     m_fullScreenCheck->setStyleSheet(checkStyle);
 
     // 添加到表单
-    sysLayout->addWidget(m_debugModeCheck);
-    sysLayout->addWidget(m_fullScreenCheck);
+    sysLayout->addRow("管理员时长:", m_adminDurationBox);
+    sysLayout->addRow(m_debugModeCheck);
+    sysLayout->addRow(m_fullScreenCheck);
 
     contentLayout->addLayout(sysLayout);
 
@@ -263,7 +287,7 @@ void SystemSettingsWidget::initUI()
 
     // 将 Content 设置给 ScrollArea
     scrollArea->setWidget(scrollContent);
-    mainLayout->addWidget(scrollArea); // 将滚动区加入主布局
+    wrapperLayout->addWidget(scrollArea); // 将滚动区加入主布局
 
     // ==========================================
     // 底部固定区域
@@ -309,7 +333,7 @@ void SystemSettingsWidget::initUI()
     m_saveBtn->setObjectName("btnSave");
     bottomLayout->addWidget(m_saveBtn);
 
-    mainLayout->addWidget(bottomBar);
+    wrapperLayout->addWidget(bottomBar);
 
     // 连接保存信号
     connect(m_saveBtn, &QPushButton::clicked, this, &SystemSettingsWidget::saveSettings);
@@ -324,6 +348,17 @@ void SystemSettingsWidget::initUI()
         if (reply == QMessageBox::Yes) {
             qApp->quit(); // 退出应用程序
         } });
+
+    // 3. 权限遮罩
+    m_permissionMask = new QWidget(this);
+    QVBoxLayout *maskLayout = new QVBoxLayout(m_permissionMask);
+    QLabel *lockLabel = new QLabel("该页面需要管理员权限才可查看", m_permissionMask);
+    lockLabel->setStyleSheet("font-size: 20px; color: #999; font-weight: bold;");
+    lockLabel->setAlignment(Qt::AlignCenter);
+    maskLayout->addWidget(lockLabel);
+
+    rootLayout->addWidget(m_mainContentWrapper);
+    rootLayout->addWidget(m_permissionMask);
 }
 
 // 辅助函数实现
@@ -340,9 +375,6 @@ QLabel *SystemSettingsWidget::createSectionLabel(const QString &text)
 // 载入配置
 void SystemSettingsWidget::loadSettings()
 {
-    // 改为从内存单例读取
-    ConfigManager *cfg = ConfigManager::instance();
-
     // 车体参数
     m_agvIdEdit->setText(cfg->agvId());
     m_agvIpEdit->setText(cfg->agvIp());
@@ -386,6 +418,7 @@ void SystemSettingsWidget::loadSettings()
         m_microControllerComBaudrateCombo->setCurrentIndex(microControllerComBaudrateIndex);
     }
     // 系统选项
+    m_adminDurationBox->setValue(cfg->adminDuration());
     m_debugModeCheck->setChecked(cfg->debugMode());
     m_fullScreenCheck->setChecked(cfg->fullScreen());
 }
@@ -393,8 +426,6 @@ void SystemSettingsWidget::loadSettings()
 // 保存配置
 void SystemSettingsWidget::saveSettings()
 {
-    ConfigManager *cfg = ConfigManager::instance();
-
     // 1. 将 UI 的值写入单例内存
     // 车体参数
     cfg->setAgvId(m_agvIdEdit->text());
@@ -421,6 +452,7 @@ void SystemSettingsWidget::saveSettings()
     cfg->setMicroControllerCom(m_microControllerComEdit->text());
     cfg->setMicroControllerComBaudrate(m_microControllerComBaudrateCombo->currentData().toInt());
     // 系统选项
+    cfg->setAdminDuration(m_adminDurationBox->value());
     cfg->setDebugMode(m_debugModeCheck->isChecked());
     cfg->setFullScreen(m_fullScreenCheck->isChecked());
 

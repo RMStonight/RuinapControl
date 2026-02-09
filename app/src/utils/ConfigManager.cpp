@@ -45,6 +45,7 @@ void ConfigManager::load()
     m_microControllerCom = settings.value("OtherCommunication/MicroControllerCom", "/dev/ttyS1").toString();
     m_microControllerComBaudrate = settings.value("OtherCommunication/MicroControllerComBaudrate", 115200).toInt();
     // 系统选项
+    m_adminDuration = settings.value("System/AdminDuration", 30).toInt();
     m_debugMode = settings.value("System/DebugMode", false).toBool();
     m_fullScreen = settings.value("System/FullScreen", false).toBool();
 }
@@ -81,6 +82,7 @@ void ConfigManager::save()
     settings.setValue("OtherCommunication/MicroControllerCom", m_microControllerCom);
     settings.setValue("OtherCommunication/MicroControllerComBaudrate", m_microControllerComBaudrate.load());
     // 系统选项
+    settings.setValue("System/AdminDuration", m_adminDuration.load());
     settings.setValue("System/DebugMode", m_debugMode.load());
     settings.setValue("System/FullScreen", m_fullScreen.load());
 
@@ -198,6 +200,10 @@ int ConfigManager::microControllerComBaudrate() const
     return m_microControllerComBaudrate.load();
 }
 // 系统选项
+int ConfigManager::adminDuration() const
+{
+    return m_adminDuration.load();
+}
 UserRole ConfigManager::currentUserRole() const
 {
     return static_cast<UserRole>(m_currentUserRole.load());
@@ -308,9 +314,14 @@ void ConfigManager::setMicroControllerComBaudrate(int baudrate)
     m_microControllerComBaudrate.store(baudrate);
 }
 // 系统选项
+void ConfigManager::setAdminDuration(int duration)
+{
+    m_adminDuration.store(duration);
+}
 void ConfigManager::setCurrentUserRole(UserRole role)
 {
     m_currentUserRole.store(static_cast<int>(role));
+    emit userRoleChanged(role); // 触发角色变更信号
 }
 void ConfigManager::setDebugMode(bool enable)
 {

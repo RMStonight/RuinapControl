@@ -23,12 +23,17 @@ private slots:
     void toggleSerialPort();
     void readData();
     void saveLogToFile();
+    void updatePermissionView();
+
+protected:
+    void showEvent(QShowEvent *event) override;
 
 private:
-    // 日志管理器
-    LogManager *logger = &LogManager::instance();
+    LogManager *logger = &LogManager::instance();   // 日志管理器
+    ConfigManager *cfg = ConfigManager::instance(); // 系统参数
 
-    ConfigManager *cfg = ConfigManager::instance();
+    QWidget *m_mainContainer;  // 原有的业务 UI 容器
+    QWidget *m_permissionPage; // 权限提示容器
 
     void initUi();
 

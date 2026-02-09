@@ -10,6 +10,7 @@ SerialDebugWidget::SerialDebugWidget(QWidget *parent) : BaseDisplayWidget(parent
     initUi();
 
     connect(m_serialPort, &QSerialPort::readyRead, this, &SerialDebugWidget::readData);
+    connect(cfg, &ConfigManager::userRoleChanged, this, &SerialDebugWidget::updatePermissionView);
 }
 
 SerialDebugWidget::~SerialDebugWidget()
@@ -20,14 +21,47 @@ SerialDebugWidget::~SerialDebugWidget()
     }
 }
 
+// 统一的显隐控制逻辑
+void SerialDebugWidget::updatePermissionView()
+{
+    bool isAdmin = (cfg->currentUserRole() == UserRole::Admin);
+    m_mainContainer->setVisible(isAdmin);
+    m_permissionPage->setVisible(!isAdmin);
+
+    // 如果是从权限不足变为有权限，且串口未打开，可以根据需要执行某些操作
+}
+
+void SerialDebugWidget::showEvent(QShowEvent *event)
+{
+    BaseDisplayWidget::showEvent(event);
+    updatePermissionView();
+}
+
 void SerialDebugWidget::initUi()
 {
-    QVBoxLayout *layout = new QVBoxLayout(this);
+    // 1. 创建一个总布局，用于区分正常显示以及权限不足时的提示
+    QVBoxLayout *rootLayout = new QVBoxLayout(this);
+    rootLayout->setContentsMargins(0, 0, 0, 0);
+
+    // 2.创建业务容器 (将原有布局移入此处)
+    m_mainContainer = new QWidget(this);
+    QVBoxLayout *layout = new QVBoxLayout(m_mainContainer);
     layout->setContentsMargins(20, 20, 20, 20);
     layout->setSpacing(10);
 
-    // 1. 顶部控制栏
-    QHBoxLayout *topLayout = new QHBoxLayout();
+    // 接收显示区
+    m_logDisplay = new QPlainTextEdit();
+    m_logDisplay->setReadOnly(true);
+    // m_logDisplay->setLineWrapMode(QPlainTextEdit::NoWrap); // 禁用自动换行，只有遇到 \n 或 \r 时才换行
+    m_logDisplay->setLineWrapMode(QPlainTextEdit::WidgetWidth);
+    m_logDisplay->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    m_logDisplay->setMaximumBlockCount(MAX_LINE_COUNT); // 核心：限制行数，超过会自动删除旧行
+    m_logDisplay->setStyleSheet("QPlainTextEdit { background-color: #F5F5F5; border: 1px solid #DDD; font-family: 'Consolas'; font-size: 13px; }");
+
+    layout->addWidget(m_logDisplay);
+
+    // 顶部控制栏
+    QHBoxLayout *bottomLayout = new QHBoxLayout();
 
     // 打开/关闭按钮
     m_switchBtn = new QPushButton("打开串口");
@@ -35,10 +69,10 @@ void SerialDebugWidget::initUi()
     m_switchBtn->setStyleSheet("QPushButton { background-color: #4CAF50; color: white; border-radius: 4px; font-weight: bold; }"
                                "QPushButton:checked { background-color: #F44336; }");
     m_switchBtn->setCheckable(true);
-    topLayout->addWidget(m_switchBtn);
+    bottomLayout->addWidget(m_switchBtn);
 
     // 弹簧，将后面的按钮推向最右侧
-    topLayout->addStretch();
+    bottomLayout->addStretch();
 
     // 保存按钮
     m_saveBtn = new QPushButton("保存");
@@ -52,10 +86,10 @@ void SerialDebugWidget::initUi()
         "}"
         "QPushButton:hover { background-color: #1E88E5; }"
         "QPushButton:pressed { background-color: #1565C0; }");
-    topLayout->addWidget(m_saveBtn);
+    bottomLayout->addWidget(m_saveBtn);
 
     // 弹簧，将后面的按钮推向最右侧
-    topLayout->addStretch();
+    bottomLayout->addStretch();
 
     // 清空按钮
     m_clearBtn = new QPushButton("清空");
@@ -73,24 +107,24 @@ void SerialDebugWidget::initUi()
         "QPushButton:pressed {"
         "  background-color: #E65100;" // 按下最深
         "}");
-    topLayout->addWidget(m_clearBtn);
+    bottomLayout->addWidget(m_clearBtn);
 
-    layout->addLayout(topLayout);
-
-    // 2. 接收显示区
-    m_logDisplay = new QPlainTextEdit();
-    m_logDisplay->setReadOnly(true);
-    // m_logDisplay->setLineWrapMode(QPlainTextEdit::NoWrap); // 禁用自动换行，只有遇到 \n 或 \r 时才换行
-    m_logDisplay->setLineWrapMode(QPlainTextEdit::WidgetWidth);
-    m_logDisplay->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-    m_logDisplay->setMaximumBlockCount(MAX_LINE_COUNT); // 核心：限制行数，超过会自动删除旧行
-    m_logDisplay->setStyleSheet("QPlainTextEdit { background-color: #F5F5F5; border: 1px solid #DDD; font-family: 'Consolas'; font-size: 13px; }");
-
-    layout->addWidget(m_logDisplay);
+    layout->addLayout(bottomLayout);
 
     connect(m_switchBtn, &QPushButton::clicked, this, &SerialDebugWidget::toggleSerialPort);
     connect(m_clearBtn, &QPushButton::clicked, m_logDisplay, &QPlainTextEdit::clear);
     connect(m_saveBtn, &QPushButton::clicked, this, &SerialDebugWidget::saveLogToFile);
+
+    // 3.创建权限提示容器
+    m_permissionPage = new QWidget(this);
+    QVBoxLayout *pLayout = new QVBoxLayout(m_permissionPage);
+    QLabel *tipLabel = new QLabel("该页面需要管理员权限才可查看", m_permissionPage);
+    tipLabel->setStyleSheet("font-size: 20px; color: #888888; font-weight: bold;");
+    tipLabel->setAlignment(Qt::AlignCenter);
+    pLayout->addWidget(tipLabel);
+
+    rootLayout->addWidget(m_mainContainer);
+    rootLayout->addWidget(m_permissionPage);
 }
 
 void SerialDebugWidget::toggleSerialPort()
