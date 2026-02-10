@@ -71,6 +71,7 @@ private:
 
     // 系统选项
     QSpinBox *m_adminDurationBox;
+    QCheckBox *m_defaultFixedRelocationCheck;
     QCheckBox *m_debugModeCheck;
     QCheckBox *m_fullScreenCheck;
 

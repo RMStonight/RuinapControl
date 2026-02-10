@@ -46,6 +46,7 @@ void ConfigManager::load()
     m_microControllerComBaudrate = settings.value("OtherCommunication/MicroControllerComBaudrate", 115200).toInt();
     // 系统选项
     m_adminDuration = settings.value("System/AdminDuration", 30).toInt();
+    m_defaultFixedRelocation = settings.value("System/DefaultFixedRelocation", false).toBool();
     m_debugMode = settings.value("System/DebugMode", false).toBool();
     m_fullScreen = settings.value("System/FullScreen", false).toBool();
 }
@@ -83,6 +84,7 @@ void ConfigManager::save()
     settings.setValue("OtherCommunication/MicroControllerComBaudrate", m_microControllerComBaudrate.load());
     // 系统选项
     settings.setValue("System/AdminDuration", m_adminDuration.load());
+    settings.setValue("System/DefaultFixedRelocation", m_defaultFixedRelocation.load());
     settings.setValue("System/DebugMode", m_debugMode.load());
     settings.setValue("System/FullScreen", m_fullScreen.load());
 
@@ -208,6 +210,10 @@ UserRole ConfigManager::currentUserRole() const
 {
     return static_cast<UserRole>(m_currentUserRole.load());
 }
+bool ConfigManager::defaultFixedRelocation() const
+{
+    return m_defaultFixedRelocation.load();
+}
 bool ConfigManager::debugMode() const
 {
     return m_debugMode.load();
@@ -322,6 +328,10 @@ void ConfigManager::setCurrentUserRole(UserRole role)
 {
     m_currentUserRole.store(static_cast<int>(role));
     emit userRoleChanged(role); // 触发角色变更信号
+}
+void ConfigManager::setDefaultFixedRelocation(bool enable)
+{
+    m_defaultFixedRelocation.store(enable);
 }
 void ConfigManager::setDebugMode(bool enable)
 {

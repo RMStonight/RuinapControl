@@ -268,15 +268,18 @@ void SystemSettingsWidget::initUI()
     m_adminDurationBox->setSuffix(" s"); // 显示单位
     m_adminDurationBox->setFixedWidth(120);
 
+    m_defaultFixedRelocationCheck = new QCheckBox("默认固定重定位模式", this);
     m_debugModeCheck = new QCheckBox("开启调试日志 (Debug Log)", this);
     m_fullScreenCheck = new QCheckBox("开启全屏模式 (隐藏标题栏)", this);
     // 稍微加大一点 Checkbox 的字体
     QString checkStyle = "QCheckBox { font-size: 14px; color: #555; }";
+    m_defaultFixedRelocationCheck->setStyleSheet(checkStyle);
     m_debugModeCheck->setStyleSheet(checkStyle);
     m_fullScreenCheck->setStyleSheet(checkStyle);
 
     // 添加到表单
     sysLayout->addRow("管理员时长:", m_adminDurationBox);
+    sysLayout->addRow(m_defaultFixedRelocationCheck);
     sysLayout->addRow(m_debugModeCheck);
     sysLayout->addRow(m_fullScreenCheck);
 
@@ -419,6 +422,7 @@ void SystemSettingsWidget::loadSettings()
     }
     // 系统选项
     m_adminDurationBox->setValue(cfg->adminDuration());
+    m_defaultFixedRelocationCheck->setChecked(cfg->defaultFixedRelocation());
     m_debugModeCheck->setChecked(cfg->debugMode());
     m_fullScreenCheck->setChecked(cfg->fullScreen());
 }
@@ -453,6 +457,7 @@ void SystemSettingsWidget::saveSettings()
     cfg->setMicroControllerComBaudrate(m_microControllerComBaudrateCombo->currentData().toInt());
     // 系统选项
     cfg->setAdminDuration(m_adminDurationBox->value());
+    cfg->setDefaultFixedRelocation(m_defaultFixedRelocationCheck->isChecked());
     cfg->setDebugMode(m_debugModeCheck->isChecked());
     cfg->setFullScreen(m_fullScreenCheck->isChecked());
 

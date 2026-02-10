@@ -195,16 +195,35 @@ void NetworkCheckThread::run()
 void NetworkCheckThread::logNetworkSummary()
 {
     QStringList details;
+    spdlog::level::level_enum logLevel = spdlog::level::info; // 默认为 info
+
     QMapIterator<QString, QString> i(m_networkStatusMap);
     while (i.hasNext())
     {
         i.next();
-        details << QString("%1:%2").arg(i.key(), i.value());
+        QString name = i.key();
+        QString status = i.value();
+        details << QString("%1:%2").arg(name, status);
+
+        // --- 优先级逻辑判断 ---
+
+        // 1. 如果包含“离线”，优先级最高，设为 err
+        if (status.contains(QStringLiteral("离线")))
+        {
+            logLevel = spdlog::level::err;
+        }
+        // 2. 如果当前不是 err 级别，再判断是否需要设为 warn (延迟 > 100ms)
+        else if (logLevel != spdlog::level::err)
+        {
+            // 提取数字部分，例如 "105ms" -> 105
+            int latency = status.chopped(2).toInt();
+            if (latency > 100)
+            {
+                logLevel = spdlog::level::warn;
+            }
+        }
     }
 
-    // 组合成一条日志：[NET] 服务器:4ms; 单片机:1ms; 导航雷达:离线
     QString logMsg = details.join("; ");
-
-    // 使用您之前定义的 LogManager 记录
-    logger->log(QStringLiteral("NetworkCheckThread"), spdlog::level::info, logMsg);
+    logger->log(QStringLiteral("NetworkCheckThread"), logLevel, logMsg);
 }

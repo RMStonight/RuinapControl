@@ -1,7 +1,8 @@
 #include "monitor/MonitorInteractionHandler.h"
 #include "components/MonitorWidget.h"
-#include "layers/RelocationLayer.h" 
-#include "layers/AgvLayer.h"        
+#include "layers/RelocationLayer.h"
+#include "layers/AgvLayer.h"
+#include "layers/FixedRelocationLayer.h"
 #include <QLineF>
 #include <QtMath>
 
@@ -14,11 +15,28 @@ bool MonitorInteractionHandler::isInDrawingArea(const QPointF &pos)
     return pos.x() < w->getDrawingWidth();
 }
 
+// 鼠标按下
 void MonitorInteractionHandler::handleMousePress(QMouseEvent *event)
 {
     // 访问私有变量 m_touchActive
     if (m_touchActive || !isInDrawingArea(event->localPos()))
         return;
+
+    m_lastMousePos = event->localPos(); // 记录起始点
+    QPointF worldPos = (event->localPos() - w->m_offset) / w->m_scale;
+    // 注意：世界坐标 Y 轴在绘制时取反了，这里需要转换回来匹配 FixedPose 的存储
+    QPointF clickWorldPos(worldPos.x(), -worldPos.y());
+
+    // 响应固定重定位点位点击 (按下)
+    if (w->m_fixedReloLayer && w->m_fixedReloLayer->isVisible())
+    {
+        int hitIndex = w->m_fixedReloLayer->checkHit(clickWorldPos);
+        if (hitIndex != -1)
+        {
+            FixedPose p = w->m_fixedReloLayer->getPose(hitIndex);
+            emit hitFixedRelocation(true, p.x * 1000, p.y * 1000, qRadiansToDegrees(p.angle) * 100);
+        }
+    }
 
     // 访问私有变量 m_isRelocating 和 m_reloLayer
     if (w->m_isRelocating && w->m_reloLayer && w->m_reloLayer->isVisible())
@@ -36,16 +54,9 @@ void MonitorInteractionHandler::handleMousePress(QMouseEvent *event)
             return;
         }
     }
-
-    if (event->button() == Qt::LeftButton)
-    {
-        m_lastMousePos = event->localPos();
-        // 调用私有方法 checkPointClick
-        w->checkPointClick(event->localPos());
-    }
-    m_lastMousePos = event->localPos();
 }
 
+// 鼠标移动
 void MonitorInteractionHandler::handleMouseMove(QMouseEvent *event)
 {
     if (m_touchActive || !isInDrawingArea(event->localPos()))
@@ -79,13 +90,46 @@ void MonitorInteractionHandler::handleMouseMove(QMouseEvent *event)
     }
 }
 
+// 鼠标松开
 void MonitorInteractionHandler::handleMouseRelease(QMouseEvent *event)
 {
-    Q_UNUSED(event);
+    if (m_touchActive)
+        return;
+
+    // 计算从按下到释放的位移
+    double moveDist = QLineF(event->localPos(), m_lastMousePos).length();
+    QPointF worldPos = (event->localPos() - w->m_offset) / w->m_scale;
+    QPointF clickWorldPos(worldPos.x(), -worldPos.y());
+
+    // 是否触发固定重定位的标识位
+    bool fixedPoseHit = false;
+
+    // 响应固定重定位点位点击 (松开)
+    if (w->m_fixedReloLayer && w->m_fixedReloLayer->isVisible())
+    {
+        int hitIndex = w->m_fixedReloLayer->checkHit(clickWorldPos);
+        if (hitIndex != -1)
+        {
+            fixedPoseHit = true; // 标记已命中固定点
+            FixedPose p = w->m_fixedReloLayer->getPose(hitIndex);
+            emit hitFixedRelocation(false, p.x * 1000, p.y * 1000, qRadiansToDegrees(p.angle) * 100);
+        }
+    }
+
+    // 如果没有拖拽重定位组件，且移动距离很小（小于5像素），且【没有命中固定点位】，视为点击
+    if (!m_isDraggingSmall && !m_isDraggingBig && moveDist < 5.0 && !fixedPoseHit)
+    {
+        if (isInDrawingArea(event->localPos()))
+        {
+            w->checkPointClick(event->localPos());
+        }
+    }
+
     m_isDraggingSmall = false;
     m_isDraggingBig = false;
 }
 
+// 鼠标滚轮
 void MonitorInteractionHandler::handleWheel(QWheelEvent *event)
 {
     if (!isInDrawingArea(event->position()))
@@ -103,6 +147,7 @@ void MonitorInteractionHandler::handleWheel(QWheelEvent *event)
     w->update();
 }
 
+// 触屏事件
 void MonitorInteractionHandler::handleTouch(QTouchEvent *event)
 {
     const QList<QTouchEvent::TouchPoint> &points = event->touchPoints();
@@ -121,6 +166,19 @@ void MonitorInteractionHandler::handleTouch(QTouchEvent *event)
         if (points.count() == 1)
         {
             QPointF worldPos = (points.first().pos() - w->m_offset) / w->m_scale;
+            QPointF clickWorldPos(worldPos.x(), -worldPos.y());
+
+            // --- 触屏单指按下固定点位检测 ---
+            if (w->m_fixedReloLayer && w->m_fixedReloLayer->isVisible())
+            {
+                int hitIndex = w->m_fixedReloLayer->checkHit(clickWorldPos);
+                if (hitIndex != -1)
+                {
+                    FixedPose p = w->m_fixedReloLayer->getPose(hitIndex);
+                    emit hitFixedRelocation(true, p.x * 1000, p.y * 1000, qRadiansToDegrees(p.angle) * 100);
+                }
+            }
+
             if (w->m_isRelocating)
             {
                 if (w->m_reloLayer->isHitSmallCircle(worldPos))
@@ -135,7 +193,7 @@ void MonitorInteractionHandler::handleTouch(QTouchEvent *event)
             }
             if (!m_isDraggingSmall && !m_isDraggingBig)
             {
-                w->checkPointClick(points.first().pos());
+                // w->checkPointClick(points.first().pos());
             }
         }
     }
@@ -188,6 +246,35 @@ void MonitorInteractionHandler::handleTouch(QTouchEvent *event)
 
     if (event->type() == QEvent::TouchEnd || event->type() == QEvent::TouchCancel)
     {
+        const QList<QTouchEvent::TouchPoint> &points = event->touchPoints();
+        if (!points.isEmpty())
+        {
+            bool fixedPoseHit = false;
+
+            // ---触屏单指松开固定点位检测 ---
+            if (points.count() == 1 && event->type() == QEvent::TouchEnd)
+            {
+                QPointF worldPos = (points.first().pos() - w->m_offset) / w->m_scale;
+                QPointF clickWorldPos(worldPos.x(), -worldPos.y());
+                if (w->m_fixedReloLayer && w->m_fixedReloLayer->isVisible())
+                {
+                    int hitIndex = w->m_fixedReloLayer->checkHit(clickWorldPos);
+                    if (hitIndex != -1)
+                    {
+                        fixedPoseHit = true; // 标记命中
+                        FixedPose p = w->m_fixedReloLayer->getPose(hitIndex);
+                        emit hitFixedRelocation(false, p.x * 1000, p.y * 1000, qRadiansToDegrees(p.angle) * 100);
+                    }
+                }
+            }
+
+            // 单指且位移小时触发
+            double moveDist = QLineF(points.first().pos(), points.first().startPos()).length();
+            if (!m_isDraggingSmall && !m_isDraggingBig && moveDist < 10.0 && !fixedPoseHit)
+            {
+                w->checkPointClick(points.first().pos());
+            }
+        }
         resetState();
     }
 }

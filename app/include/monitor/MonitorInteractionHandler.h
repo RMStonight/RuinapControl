@@ -26,6 +26,9 @@ public:
     // 状态重置
     void resetState();
 
+signals:
+    void hitFixedRelocation(bool state, int x, int y, int angle);
+
 private:
     MonitorWidget *w; // 指向父组件，用于访问状态和触发 update
 

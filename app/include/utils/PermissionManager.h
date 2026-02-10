@@ -3,7 +3,6 @@
 
 #include <QObject>
 #include <QTimer>
-#include <QDebug>
 #include "AgvData.h"
 #include "LogManager.h"
 #include "ConfigManager.h"
@@ -25,7 +24,6 @@ public:
         // 假设 AgvData 中定义了 UserRole 枚举
         if (ConfigManager::instance()->currentUserRole() != UserRole::Operator)
         {
-            // qDebug() << "HandleActivity, current is " << static_cast<int>(ConfigManager::instance()->currentUserRole()) << "role.";
             startMonitor();
         }
     }
@@ -38,7 +36,7 @@ public:
 private slots:
     void onTimeout()
     {
-        logger->log(QStringLiteral("PermissionManager"), spdlog::level::warn, QStringLiteral("User inactive for 5 s, reverting to Operator role."));
+        logger->log(QStringLiteral("PermissionManager"), spdlog::level::warn, QStringLiteral("User inactive for %1 s, reverting to Operator role.").arg(m_seconds));
         // 执行自动降权逻辑
         ConfigManager::instance()->setCurrentUserRole(UserRole::Operator);
 
@@ -49,7 +47,6 @@ private slots:
 private:
     explicit PermissionManager(QObject *parent = nullptr) : QObject(parent)
     {
-        int m_seconds = cfg->adminDuration();
         m_timeoutTimer.setSingleShot(true);
         m_timeoutTimer.setInterval(m_seconds * 1000);
         // m_timeoutTimer.setInterval(30 * 60 * 1000); // 30 分钟
@@ -63,6 +60,7 @@ private:
     LogManager *logger = &LogManager::instance();
 
     QTimer m_timeoutTimer;
+    int m_seconds = cfg->adminDuration();
 };
 
 #endif

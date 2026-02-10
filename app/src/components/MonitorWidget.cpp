@@ -1,7 +1,6 @@
 #include "components/MonitorWidget.h"
 #include "utils/RosBridgeClient.h"
 #include "utils/ConfigManager.h"
-#include "AgvData.h"
 #include "monitor/MapDataManager.h"
 #include "monitor/MonitorInteractionHandler.h"
 #include "monitor/RelocationController.h"
@@ -11,6 +10,7 @@
 #include "layers/PointPathLayer.h"
 #include "layers/PointCloudLayer.h"
 #include "layers/RelocationLayer.h"
+#include "layers/FixedRelocationLayer.h"
 #include <QPainter>
 #include <QWheelEvent>
 #include <QMouseEvent>
@@ -49,8 +49,8 @@ MonitorWidget::MonitorWidget(QWidget *parent) : BaseDisplayWidget(parent)
     m_mapResolution = ConfigManager::instance()->mapResolution() / 1000.0;
 
     // 链接业务信号
-    connect(AgvData::instance(), &AgvData::pointCloudDataReady, this, &MonitorWidget::updatePointCloud);
-    connect(AgvData::instance(), &AgvData::agvStateChanged, this, &MonitorWidget::updateAgvState);
+    connect(agvData, &AgvData::pointCloudDataReady, this, &MonitorWidget::updatePointCloud);
+    connect(agvData, &AgvData::agvStateChanged, this, &MonitorWidget::updateAgvState);
 
     // 初始化图层
     m_mapLayer = new MapLayer();
@@ -58,11 +58,12 @@ MonitorWidget::MonitorWidget(QWidget *parent) : BaseDisplayWidget(parent)
     m_agvLayer = new AgvLayer();
     m_pointCloudLayer = new PointCloudLayer();
     m_reloLayer = new RelocationLayer();
+    m_fixedReloLayer = new FixedRelocationLayer();
 
-    m_layers << new GridLayer() << m_mapLayer << m_pointPathLayer << m_agvLayer << m_pointCloudLayer << m_reloLayer;
+    m_layers << new GridLayer() << m_mapLayer << m_pointPathLayer << m_agvLayer << m_pointCloudLayer << m_reloLayer << m_fixedReloLayer;
 
     // 初始化重定位按钮
-    m_reloBtn = new QPushButton("重定位", this);
+    m_reloBtn = new QPushButton("自由重定位", this);
     m_confirmBtn = new QPushButton("确认", this);
     m_cancelBtn = new QPushButton("取消", this);
 
@@ -83,11 +84,32 @@ MonitorWidget::MonitorWidget(QWidget *parent) : BaseDisplayWidget(parent)
     m_cancelBtn->hide();
     m_reloBtn->show();
 
+    m_switchBtn = new QPushButton(this);
+    m_switchBtn->setIcon(QIcon(":/icons/switch.svg"));
+    m_switchBtn->setIconSize(QSize(24, 24));
+    m_switchBtn->setStyleSheet(
+        "QPushButton {"
+        "  border-radius: 20px;"
+        "  background-color: #f0f0f0;"
+        "  border: 1px solid #ccc;"
+        "}"
+        "QPushButton:hover {"
+        "  background-color: #e0e0e0;"
+        "}");
+    m_switchBtn->setFixedSize(40, 40);
+    m_switchBtn->move(95, 50);
+
+    // 初始化 重定位模式
+    RelocationController::ReloMode defaultRelocationMode = ConfigManager::instance()->defaultFixedRelocation() ? RelocationController::ReloMode::FixedMode : RelocationController::ReloMode::FreeMode;
+    m_reloController->setMode(defaultRelocationMode);
+
     // 信号槽连接
     connect(m_reloBtn, &QPushButton::clicked, m_reloController, &RelocationController::start);
+    connect(m_switchBtn, &QPushButton::clicked, m_reloController, &RelocationController::switchMode);
     connect(m_confirmBtn, &QPushButton::clicked, m_reloController, &RelocationController::finish);
     connect(m_cancelBtn, &QPushButton::clicked, m_reloController, &RelocationController::cancel);
-    connect(this, &MonitorWidget::baseIniPose, AgvData::instance(), &AgvData::requestInitialPose);
+    connect(this, &MonitorWidget::baseIniPose, agvData, &AgvData::requestInitialPose);
+    connect(m_interactionHandler, &MonitorInteractionHandler::hitFixedRelocation, this, &MonitorWidget::handleFixedRelocation);
 }
 
 MonitorWidget::~MonitorWidget()
@@ -124,11 +146,13 @@ void MonitorWidget::setMapId(int id)
     }
 }
 
+// 处理 mapId 变化，左上角 label，m_mapLayer，m_pointPathLayer，m_fixedReloLayer
 void MonitorWidget::handleMapIdChanged(int mapId)
 {
     setMapId(mapId);
     handleMapName(mapId);
     handleMapJsonName(mapId);
+    m_fixedReloLayer->update(mapId);
 }
 
 void MonitorWidget::handleMapName(int mapId)
@@ -253,18 +277,52 @@ void MonitorWidget::checkPointClick(const QPointF &screenPos)
 
     const QMap<int, QJsonObject> &pointMap = m_mapDataManager->getPointMap();
     QMapIterator<int, QJsonObject> it(pointMap);
+
+    bool found = false;
     while (it.hasNext())
     {
         it.next();
         QJsonObject obj = it.value();
+
         double px = obj.value("x").toDouble() / 1000.0;
         double py = obj.value("y").toDouble() / 1000.0;
 
-        if (QLineF(worldX, worldY, px, py).length() < m_pointPathLayer->radius)
+        // 计算欧氏距离
+        double dist = std::sqrt(std::pow(worldX - px, 2) + std::pow(worldY - py, 2));
+
+        // 判断是否落在点位半径内 (使用 PointPathLayer 定义的 radius)
+        if (dist <= m_pointPathLayer->radius)
         {
-            emit pointClicked(it.key());
+            int pointId = it.key();
+            logger->log("MonitorWidget", spdlog::level::info, QString("Clicked Point ID: %1 at (%2, %3)").arg(pointId).arg(px).arg(py));
+
+            emit pointClicked(pointId); // 发射信号
+            found = true;
             break;
         }
+    }
+
+    if (!found)
+    {
+        // 可选：打印未命中位置方便调试
+        // qDebug() << "No point found at world pos:" << worldX << worldY;
+    }
+}
+
+void MonitorWidget::handleFixedRelocation(bool state, int x, int y, int angle)
+{
+    logger->log("MonitorWidget", spdlog::level::warn, QString("Fixed relocation. State: %1, X: %2, Y: %3, Angle: %4").arg(state).arg(x).arg(y).arg(angle));
+    if (state)
+    {
+        agvData->setIniX(x);
+        agvData->setIniY(y);
+        agvData->setIniW(angle);
+    }
+    else
+    {
+        agvData->setIniX(0);
+        agvData->setIniY(0);
+        agvData->setIniW(0);
     }
 }
 
@@ -285,7 +343,8 @@ bool MonitorWidget::event(QEvent *event)
             QPoint p = te->touchPoints().first().pos().toPoint();
             bool onBtn = (m_reloBtn->isVisible() && m_reloBtn->geometry().contains(p)) ||
                          (m_confirmBtn->isVisible() && m_confirmBtn->geometry().contains(p)) ||
-                         (m_cancelBtn->isVisible() && m_cancelBtn->geometry().contains(p));
+                         (m_cancelBtn->isVisible() && m_cancelBtn->geometry().contains(p)) ||
+                         (m_switchBtn->isVisible() && m_switchBtn->geometry().contains(p));
             if (onBtn)
                 return QWidget::event(event);
         }

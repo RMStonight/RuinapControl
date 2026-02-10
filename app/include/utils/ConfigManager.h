@@ -59,6 +59,7 @@ public:
     int microControllerComBaudrate() const;
     // 系统运行
     int adminDuration() const;
+    bool defaultFixedRelocation() const;
     bool debugMode() const;
     bool fullScreen() const;
 
@@ -89,6 +90,7 @@ public:
     void setMicroControllerComBaudrate(int baudrate);
     // 系统运行
     void setAdminDuration(int duration);
+    void setDefaultFixedRelocation(bool enable);
     void setDebugMode(bool enable);
     void setFullScreen(bool enable);
 
@@ -132,7 +134,8 @@ private:
     QString m_microControllerCom;                  // 单片机 com 口
     std::atomic<int> m_microControllerComBaudrate; // 单片机 com 口波特率
     // 系统运行
-    std::atomic<int> m_adminDuration; // 管理员权限在无任何操作下维持的时长
+    std::atomic<int> m_adminDuration;           // 管理员权限在无任何操作下维持的时长
+    std::atomic<bool> m_defaultFixedRelocation; // 是否默认是固定重定位模式
     std::atomic<bool> m_debugMode;
     std::atomic<bool> m_fullScreen;
 

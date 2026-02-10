@@ -119,7 +119,6 @@ void CommunicationWsClient::sendAgvStateRequest()
     QString jsonReqStateStr = docReqState.toJson(QJsonDocument::Compact);
 
     emit sigInternalSendText(jsonReqStateStr);
-    // qDebug() << "CommunicationWsClient: 发送指令 ->" << jsonReqStateStr;
 
     // REQUEST_AGV_TASK
     requestTask["DateTime"] = timeStr;
@@ -129,7 +128,6 @@ void CommunicationWsClient::sendAgvStateRequest()
     QString jsonReqTaskStr = docReqTask.toJson(QJsonDocument::Compact);
 
     emit sigInternalSendText(jsonReqTaskStr);
-    // qDebug() << "CommunicationWsClient: 发送指令 ->" << jsonReqTaskStr;
 
     // TOUCH_STATE
     touchState["DateTime"] = timeStr;
@@ -140,7 +138,6 @@ void CommunicationWsClient::sendAgvStateRequest()
     QString jsonTouchStateStr = docTouchState.toJson(QJsonDocument::Compact);
 
     emit sigInternalSendText(jsonTouchStateStr);
-    // qDebug() << "CommunicationWsClient: 发送指令 ->" << jsonTouchStateStr;
 
     dataStamps++;
 }
@@ -230,6 +227,5 @@ void CommunicationWsClient::onInternalDisconnected()
 void CommunicationWsClient::onInternalTextReceived(const QString &msg)
 {
     // 处理接收到的消息
-    // qDebug() << "CommunicationWsClient 收到业务数据:";
     emit textReceived(msg);
 }

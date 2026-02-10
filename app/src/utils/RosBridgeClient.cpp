@@ -133,7 +133,6 @@ void RosBridgeClient::doReconnect()
 // 发布重定位
 void RosBridgeClient::setInitialPose(const QPointF &pos, double angle)
 {
-    logger->log(QStringLiteral("RosBridgeClient"), spdlog::level::warn, QStringLiteral("Enter setInitialPose"));
     if (!m_webSocket || !m_webSocket->isValid())
     {
         logger->log(QStringLiteral("RosBridgeClient"), spdlog::level::err, QStringLiteral("Cannot set pose, socket not connected."));

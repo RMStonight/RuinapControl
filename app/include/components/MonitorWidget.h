@@ -1,7 +1,7 @@
 #ifndef MONITORWIDGET_H
 #define MONITORWIDGET_H
 
-#include "BaseDisplayWidget.h" 
+#include "BaseDisplayWidget.h"
 #include <QImage>
 #include <QVector>
 #include <QPointF>
@@ -11,6 +11,7 @@
 #include <QMap>
 #include <QJsonObject>
 #include "LogManager.h"
+#include "AgvData.h"
 
 // 前向声明，减少头文件耦合
 class BaseLayer;
@@ -20,13 +21,14 @@ class AgvLayer;
 class PointPathLayer;
 class PointCloudLayer;
 class RelocationLayer;
+class FixedRelocationLayer;
 class MapDataManager;
 class MonitorInteractionHandler;
 class RelocationController;
 class ConfigManager;
 class AgvData;
 
-class MonitorWidget : public BaseDisplayWidget 
+class MonitorWidget : public BaseDisplayWidget
 {
     Q_OBJECT
     // 允许交互处理器直接操作位姿变量 m_scale, m_offset 等
@@ -54,7 +56,7 @@ protected:
     void showEvent(QShowEvent *event) override;
 
 signals:
-    void pointClicked(int id); 
+    void pointClicked(int id);
     void baseIniPose(const QPointF &pos, double angle);
 
 public slots:
@@ -64,6 +66,8 @@ private slots:
     // 业务回调与按钮逻辑
     void updatePointCloud(const QVector<QPointF> &points);
     void updateAgvState(const QVector<int> &agvState);
+    // 响应固定重定位的返回数据
+    void handleFixedRelocation(bool state, int x, int y, int angle);
 
 private:
     // 内部私有辅助逻辑
@@ -73,8 +77,8 @@ private:
     void checkPointClick(const QPointF &screenPos);
 
 private:
-    // 日志管理器
-    LogManager *logger = &LogManager::instance();
+    AgvData *agvData = AgvData::instance();
+    LogManager *logger = &LogManager::instance(); // 日志管理器
 
     // 剥离出的功能模块指针
     MapDataManager *m_mapDataManager = nullptr;
@@ -84,6 +88,7 @@ private:
     // UI 组件
     QLabel *m_mapIdLabel = nullptr;
     QPushButton *m_reloBtn = nullptr;
+    QPushButton *m_switchBtn = nullptr;
     QPushButton *m_confirmBtn = nullptr;
     QPushButton *m_cancelBtn = nullptr;
 
@@ -106,7 +111,7 @@ private:
 
     // 交互状态
     bool m_touchActive = false;
-    bool m_isRelocating = false; 
+    bool m_isRelocating = false;
 
     // 图层管理
     QList<BaseLayer *> m_layers;
@@ -115,6 +120,7 @@ private:
     PointPathLayer *m_pointPathLayer = nullptr;
     PointCloudLayer *m_pointCloudLayer = nullptr;
     RelocationLayer *m_reloLayer = nullptr;
+    FixedRelocationLayer *m_fixedReloLayer = nullptr;
 };
 
 #endif // MONITORWIDGET_H

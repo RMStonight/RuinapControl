@@ -10,6 +10,17 @@
 
 <img alt="" src="./imgs/7-log.png" width="45%">&nbsp;&nbsp;&nbsp;<img alt="" src="./imgs/8-setting.png" width="45%">
 
+## 20260210 V1.2.5
+
+* 网络状态产生的日志，现在会区分处理 info warn err
+* 将 AgvLayer 中绘制 Agv 模型的方法提取出来，封装到 AgvDrawer 中，供不同模块使用
+* 新增了一个 switch.svg 文件
+* MonitorWidget 中新增了一个切换的图标按钮，用于切换重定位模式
+* RelocationController 现在要区分处理不同的 mode，包括 自由重定位 以及 固定重定位
+* 新增 FixedRelocationLayer 图层，通过读取的配置文件 initial_points.json 并根据 mapId 来绘制固定重定位时可以选择的点位
+* MonitorInteractionHandler 中分别处理 固定重定位事件 以及 点位按下事件，且保证优先级及唯一性
+* 新增系统参数，用于设置默认的重定位模式为 自由重定位 还是 固定重定位
+
 ## 20260209 V1.2.4
 
 * 新增系统参数 adminDuration

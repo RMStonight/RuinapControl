@@ -64,9 +64,11 @@ set(SOURCES
     include/layers/BaseLayer.h
     include/layers/GridLayer.h
     include/layers/MapLayer.h
+    include/layers/AgvDrawer.h
     include/layers/AgvLayer.h
     include/layers/PointPathLayer.h
     include/layers/RelocationLayer.h
+    include/layers/FixedRelocationLayer.h
 
     resources/app.qrc
 )
