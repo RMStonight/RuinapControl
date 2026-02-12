@@ -10,6 +10,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     // 初始化通讯模块
     m_commClient = new CommunicationWsClient(this);
+    m_truckLoadingClient = new TruckWsClient(this);
 
     // 建立连接
     setupConnections();
@@ -17,6 +18,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     // 启动通信服务
     m_commClient->start();
+    m_truckLoadingClient->start();
 }
 
 MainWindow::~MainWindow()
@@ -61,6 +63,10 @@ void MainWindow::setupConnections()
     // 解析 websocket 消息
     connect(m_commClient, &CommunicationWsClient::textReceived,
             AgvData::instance(), &AgvData::parseMsg);
+
+    // 处理 mainContent 中的信号
+    connect(m_mainContent, &MainContentWidget::requestTruckSize, m_truckLoadingClient, &TruckWsClient::requestTruckSize);
+    connect(m_truckLoadingClient, &TruckWsClient::getTruckSize, m_mainContent, &MainContentWidget::getTruckSize);
 }
 
 // 全屏或者取消全屏

@@ -60,6 +60,8 @@ private:
     // 网络设置
     QLineEdit *m_commIpEdit;
     QSpinBox *m_commPortBox;
+    QLineEdit *m_truckLoadingIpEdit;
+    QSpinBox *m_truckLoadingPortBox;
     QLineEdit *m_rosBridgeIpEdit;
     QSpinBox *m_rosBridgePortBox;
     QLineEdit *m_serverIpEdit;

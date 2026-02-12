@@ -13,6 +13,7 @@
 #include <QDebug>
 #include <QProgressBar>
 #include "CommunicationWsClient.h"
+#include "TruckWsClient.h"
 
 // 前置声明：告诉编译器有这些类，但先不包含具体头文件，能加快编译速度
 class QLabel;
@@ -27,8 +28,8 @@ Q_OBJECT // 必须加这个宏，否则信号槽无法工作
     ~MainWindow();
 
 private:
-    // 通讯模块
-    CommunicationWsClient *m_commClient;
+    CommunicationWsClient *m_commClient; // 通讯模块
+    TruckWsClient *m_truckLoadingClient; // 装车通讯
 
     // --- 成员变量（UI控件） ---
     // 把控件定义为成员变量，这样你在类的任何函数里都能控制它们

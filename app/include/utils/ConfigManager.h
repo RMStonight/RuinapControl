@@ -50,6 +50,8 @@ public:
     // 网络通信
     QString commIp() const;
     int commPort() const;
+    QString truckLoadingIp() const;
+    int truckLoadingPort() const;
     QString rosBridgeIp() const;
     int rosBridgePort() const;
     QString serverIp() const;
@@ -81,6 +83,8 @@ public:
     // 网络通信
     void setCommIp(const QString &ip);
     void setCommPort(int port);
+    void setTruckLoadingIp(const QString &ip);
+    void setTruckLoadingPort(int port);
     void setRosBridgeIp(const QString &ip);
     void setRosBridgePort(int port);
     void setServerIp(const QString &ip);
@@ -126,6 +130,8 @@ private:
     // 网络通信
     QString m_commIp;
     std::atomic<int> m_commPort;
+    QString m_truckLoadingIp;
+    std::atomic<int> m_truckLoadingPort;
     QString m_rosbridgeIp;
     std::atomic<int> m_rosbridgePort;
     QString m_serverIp;

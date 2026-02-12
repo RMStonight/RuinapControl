@@ -7,6 +7,7 @@
 #include "BottomInfoBar.h"
 #include "VehicleInfoWidget.h"
 #include "IoWidget.h"
+#include "TruckLoadingWidget.h"
 #include "ManualControlWidget.h"
 #include "SerialDebugWidget.h"
 #include "LogDisplayWidget.h"
@@ -27,6 +28,11 @@ public:
     void updateBottomBarData(const QString &key, const QString &value);
 
 signals:
+    /**
+     * @brief 通知外部发送WS请求
+     */
+    void requestTruckSize();
+    void getTruckSize(const QString &dateTime, int width, int depth);
 
 private slots:
     // 处理 Tab 切换，控制底部栏显示/隐藏
@@ -49,6 +55,7 @@ private:
     ManualControlWidget *m_manualControlTab; //  manualControl 标签页
     MonitorWidget *m_monitorTab;             //  monitor 标签页
     IoWidget *m_ioTab;                       //  Io 标签页
+    TruckLoadingWidget *m_truckLoadingTab;   //  装车管理 标签页
     SerialDebugWidget *m_serialTab;          //  串口调试标签页
     LogDisplayWidget *m_logTab;              //  日志记录标签页
 

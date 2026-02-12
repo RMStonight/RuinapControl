@@ -200,6 +200,17 @@ void SystemSettingsWidget::initUI()
     netLayout->addRow("数据通讯IP:", m_commIpEdit);
     netLayout->addRow("数据通讯端口:", m_commPortBox);
 
+    m_truckLoadingIpEdit = new QLineEdit(this);
+    m_truckLoadingIpEdit->setPlaceholderText("127.0.0.1");
+    m_truckLoadingIpEdit->setFixedWidth(200);
+
+    m_truckLoadingPortBox = new QSpinBox(this);
+    m_truckLoadingPortBox->setRange(1, 65535);
+    m_truckLoadingPortBox->setFixedWidth(100);
+
+    netLayout->addRow("装车通讯IP:", m_truckLoadingIpEdit);
+    netLayout->addRow("装车通讯端口:", m_truckLoadingPortBox);
+
     m_rosBridgeIpEdit = new QLineEdit(this);
     m_rosBridgeIpEdit->setPlaceholderText("127.0.0.1");
     m_rosBridgeIpEdit->setFixedWidth(200);
@@ -407,6 +418,8 @@ void SystemSettingsWidget::loadSettings()
     // 网络通讯
     m_commIpEdit->setText(cfg->commIp());
     m_commPortBox->setValue(cfg->commPort());
+    m_truckLoadingIpEdit->setText(cfg->truckLoadingIp());
+    m_truckLoadingPortBox->setValue(cfg->truckLoadingPort());
     m_rosBridgeIpEdit->setText(cfg->rosBridgeIp());
     m_rosBridgePortBox->setValue(cfg->rosBridgePort());
     m_serverIpEdit->setText(cfg->serverIp());
@@ -448,6 +461,8 @@ void SystemSettingsWidget::saveSettings()
     // 网络通讯
     cfg->setCommIp(m_commIpEdit->text());
     cfg->setCommPort(m_commPortBox->value());
+    cfg->setTruckLoadingIp(m_truckLoadingIpEdit->text());
+    cfg->setTruckLoadingPort(m_truckLoadingPortBox->value());
     cfg->setRosBridgeIp(m_rosBridgeIpEdit->text());
     cfg->setRosBridgePort(m_rosBridgePortBox->value());
     cfg->setServerIp(m_serverIpEdit->text());

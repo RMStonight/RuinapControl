@@ -6,9 +6,15 @@
 
 <img alt="" src="./imgs/3-monitor.png" width="45%">&nbsp;&nbsp;&nbsp;<img alt="" src="./imgs/4-io.png" width="45%">
 
-<img alt="" src="./imgs/5-task.png" width="45%">&nbsp;&nbsp;&nbsp;<img alt="" src="./imgs/6-serial.png" width="45%">
+<img alt="" src="./imgs/5-truckLoading.png" width="45%">&nbsp;&nbsp;&nbsp;<img alt="" src="./imgs/6-serial.png" width="45%">
 
 <img alt="" src="./imgs/7-log.png" width="45%">&nbsp;&nbsp;&nbsp;<img alt="" src="./imgs/8-setting.png" width="45%">
+
+## 20260212 V1.2.6
+
+* 新增系统参数 m_truckLoadingIp、m_truckLoadingPort，同步添加到 系统设置 页面中
+* 新增 TruckWsClient，用于处理与 装车 相关的通讯
+* 新增 TruckLoadingWidget 页面，目前仅有请求车厢大小的操作
 
 ## 20260210 V1.2.5
 

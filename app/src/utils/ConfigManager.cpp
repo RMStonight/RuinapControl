@@ -37,6 +37,8 @@ void ConfigManager::load()
     // 网络通讯
     m_commIp = settings.value("Network/CommIp", "host.docker.internal").toString();
     m_commPort = settings.value("Network/CommPort", 9001).toInt();
+    m_truckLoadingIp = settings.value("Network/TruckLoadingIp", "host.docker.internal").toString();
+    m_truckLoadingPort = settings.value("Network/TruckLoadingPort", 9002).toInt();
     m_rosbridgeIp = settings.value("Network/RosBridgeIp", "host.docker.internal").toString();
     m_rosbridgePort = settings.value("Network/RosBridgePort", 9090).toInt();
     m_serverIp = settings.value("Network/ServerIP", "192.168.1.1").toString();
@@ -75,6 +77,8 @@ void ConfigManager::save()
     // 网络通讯
     settings.setValue("Network/CommIp", m_commIp);
     settings.setValue("Network/CommPort", m_commPort.load());
+    settings.setValue("Network/TruckLoadingIp", m_truckLoadingIp);
+    settings.setValue("Network/TruckLoadingPort", m_truckLoadingPort.load());
     settings.setValue("Network/RosBridgeIp", m_rosbridgeIp);
     settings.setValue("Network/RosBridgePort", m_rosbridgePort.load());
     settings.setValue("Network/ServerIP", m_serverIp);
@@ -172,6 +176,15 @@ QString ConfigManager::commIp() const
 int ConfigManager::commPort() const
 {
     return m_commPort.load();
+}
+QString ConfigManager::truckLoadingIp() const
+{
+    QReadLocker locker(&m_lock);
+    return m_truckLoadingIp;
+}
+int ConfigManager::truckLoadingPort() const
+{
+    return m_truckLoadingPort.load();
 }
 QString ConfigManager::rosBridgeIp() const
 {
@@ -290,6 +303,15 @@ void ConfigManager::setCommIp(const QString &ip)
 void ConfigManager::setCommPort(int port)
 {
     m_commPort.store(port);
+}
+void ConfigManager::setTruckLoadingIp(const QString &ip)
+{
+    QWriteLocker locker(&m_lock);
+    m_truckLoadingIp = ip;
+}
+void ConfigManager::setTruckLoadingPort(int port)
+{
+    m_truckLoadingPort.store(port);
 }
 void ConfigManager::setRosBridgeIp(const QString &ip)
 {

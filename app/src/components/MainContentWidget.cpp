@@ -72,9 +72,14 @@ void MainContentWidget::initLayout()
     m_tabWidget->addTab(m_ioTab, "IO信号");
 
     // ==========================================
-    // Tab 5: 任务管理
+    // Tab 5: 装车管理
     // ==========================================
-    m_tabWidget->addTab(createPlaceholderTab("任务管理"), "任务管理");
+    m_truckLoadingTab = new TruckLoadingWidget(this);
+    m_tabWidget->addTab(m_truckLoadingTab, "装车管理");
+    // 转发信号
+    connect(m_truckLoadingTab, &TruckLoadingWidget::requestTruckSize, this, [this]()
+            { emit requestTruckSize(); });
+    connect(this, &MainContentWidget::getTruckSize, m_truckLoadingTab, &TruckLoadingWidget::updateTruckData);
 
     // ==========================================
     // Tab 6: 串口调试
@@ -128,7 +133,7 @@ void MainContentWidget::onTabChanged(int index)
 
     // 定义哪些页面需要显示底部栏
     // 你也可以用 index 判断，但用标题更直观，或者维护一个 index 列表
-    bool noBottomBar = (currentTitle == "日志记录" || currentTitle == "用户权限" || currentTitle == "系统设置");
+    bool noBottomBar = (currentTitle == "日志记录" || currentTitle == "系统设置");
     m_bottomBar->setVisible(!noBottomBar);
 
     // 侧边栏逻辑简化

@@ -18,6 +18,7 @@ set(SOURCES
     src/utils/RosBridgeClient.cpp
     src/utils/WebsocketClient.cpp
     src/utils/CommunicationWsClient.cpp
+    src/utils/TruckWsClient.cpp
     src/utils/NetworkCheckThread.cpp
     src/utils/AgvData.cpp
     src/monitor/MapDataManager.cpp
@@ -32,6 +33,7 @@ set(SOURCES
     src/components/BottomInfoBar.cpp
     src/components/OptionalInfoWidget.cpp
     src/components/IoWidget.cpp
+    src/components/TruckLoadingWidget.cpp
     src/components/ManualControlWidget.cpp
     src/components/SerialDebugWidget.cpp
     src/components/LogDisplayWidget.cpp
@@ -40,6 +42,7 @@ set(SOURCES
     include/utils/RosBridgeClient.h
     include/utils/WebsocketClient.h
     include/utils/CommunicationWsClient.h
+    include/utils/TruckWsClient.h
     include/utils/NetworkCheckThread.h
     include/utils/AgvData.h
     include/utils/PermissionManager.h
@@ -57,6 +60,7 @@ set(SOURCES
     include/components/BottomInfoBar.h
     include/components/OptionalInfoWidget.h
     include/components/IoWidget.h
+    include/components/TruckLoadingWidget.h
     include/components/BaseDisplayWidget.h
     include/components/ManualControlWidget.h
     include/components/SerialDebugWidget.h
